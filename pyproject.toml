@@ -1,0 +1,173 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sokuji-bridge"
+version = "0.1.0"
+description = "Real-time voice translation system with modular STT, Translation, and TTS pipelines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Sokuji-Bridge Team"}
+]
+keywords = ["translation", "speech-to-text", "text-to-speech", "real-time", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Core dependencies
+    "numpy>=1.24.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+
+    # Async and API
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    "grpcio>=1.59.0",
+    "grpcio-tools>=1.59.0",
+
+    # Audio processing
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.1",
+    "pyaudio>=0.2.13",
+
+    # Logging and monitoring
+    "loguru>=0.7.2",
+    "prometheus-client>=0.19.0",
+]
+
+[project.optional-dependencies]
+# STT providers
+stt = [
+    "faster-whisper>=0.10.0",
+    "openai-whisper>=20231117",
+    "silero-vad>=4.0.0",
+]
+
+# Translation providers
+translation = [
+    "transformers>=4.35.0",
+    "torch>=2.1.0",
+    "sentencepiece>=0.1.99",
+    "deepl>=1.17.0",
+    "googletrans>=4.0.0",
+]
+
+# TTS providers
+tts = [
+    "piper-tts>=1.2.0",
+    "TTS>=0.22.0",  # Coqui TTS
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.5.0",
+]
+
+# All providers
+all = [
+    "sokuji-bridge[stt,translation,tts]",
+]
+
+# Full installation
+full = [
+    "sokuji-bridge[all,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/sokuji-bridge"
+Documentation = "https://sokuji-bridge.readthedocs.io"
+Repository = "https://github.com/yourusername/sokuji-bridge"
+Issues = "https://github.com/yourusername/sokuji-bridge/issues"
+
+[project.scripts]
+sokuji = "sokuji_bridge.cli.main:main"
+
+[tool.setuptools]
+packages = ["sokuji_bridge"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+sokuji_bridge = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "faster_whisper.*",
+    "silero_vad.*",
+    "piper.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=sokuji_bridge",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+asyncio_mode = "auto"

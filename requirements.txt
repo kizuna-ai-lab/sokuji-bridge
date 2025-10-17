@@ -1,0 +1,47 @@
+# Sokuji-Bridge Requirements
+# Core dependencies for running the translation system
+
+# Core dependencies
+numpy>=1.24.0
+pydantic>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Async and API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+
+# Audio processing
+sounddevice>=0.4.6
+soundfile>=0.12.1
+
+# Logging
+loguru>=0.7.2
+
+# STT Provider: faster-whisper
+faster-whisper>=0.10.0
+# Alternative: openai-whisper>=20231117
+
+# VAD (Voice Activity Detection)
+# webrtcvad>=2.0.10
+# torch>=2.1.0  # Required for Silero VAD
+
+# Translation Provider: NLLB
+transformers>=4.35.0
+torch>=2.1.0
+sentencepiece>=0.1.99
+
+# TTS Provider: Piper
+piper-tts>=1.2.0
+
+# Optional: GPU acceleration
+# If you have NVIDIA GPU, install:
+# torch==2.1.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+
+# Development dependencies (optional)
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# ruff>=0.1.0
+# mypy>=1.7.0

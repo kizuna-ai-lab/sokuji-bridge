@@ -1,0 +1,127 @@
+# Sokuji-Bridge Default Configuration
+# This is the fast local profile - optimized for low latency with local models
+
+version: "0.1.0"
+
+# Pipeline Configuration
+pipeline:
+  name: "fast_local"
+  mode: "streaming"
+  source_language: "auto"  # Auto-detect or specify: zh, en, ja, etc.
+  target_language: "en"
+
+  # Voice Activity Detection
+  vad:
+    enabled: true
+    model: "silero"  # silero or webrtc
+    threshold: 0.5
+    min_speech_duration_ms: 250
+    max_speech_duration_s: 30
+    min_silence_duration_ms: 300
+
+  # Audio Configuration
+  audio:
+    sample_rate: 16000
+    chunk_duration_ms: 30
+    format: "int16"  # int16 or float32
+    channels: 1
+
+  # Segmentation Strategy
+  segmentation:
+    strategy: "hybrid"  # sentence, pause, or hybrid
+    max_segment_length: 1000
+    accumulate_until_punctuation: true
+
+# Speech-to-Text Configuration
+stt:
+  provider: "faster_whisper"
+  device: "cuda"  # cuda, cpu, or auto
+
+  config:
+    model_size: "medium"  # tiny, base, small, medium, large, large-v2, large-v3
+    compute_type: "float16"  # int8, float16, float32
+    num_workers: 2
+    language: null  # Auto-detect, or specify: zh, en, ja, etc.
+    initial_prompt: ""
+    beam_size: 5
+    best_of: 5
+    temperature: 0.0
+    condition_on_previous_text: true
+
+  # Performance Optimization
+  optimization:
+    batch_size: 1
+    enable_vad_filter: true
+    vad_threshold: 0.5
+
+# Translation Configuration
+translation:
+  provider: "nllb_local"
+  fallback: null  # Optional fallback provider (e.g., "deepl_api")
+  device: "cuda"
+
+  config:
+    model: "facebook/nllb-200-distilled-1.3B"
+    precision: "float16"
+    max_length: 512
+    num_beams: 4
+
+  # Batch Processing
+  batching:
+    enabled: true
+    max_batch_size: 4
+    timeout_ms: 500  # Wait up to 500ms to accumulate batch
+
+  # Translation Cache
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+    max_entries: 10000
+
+# Text-to-Speech Configuration
+tts:
+  provider: "piper"
+  device: "cpu"  # Piper is CPU-optimized
+
+  config:
+    model: "en_US-lessac-medium"
+    speaker_id: 0
+    length_scale: 1.0  # Speech speed (1.0 = normal)
+    noise_scale: 0.667
+    noise_w: 0.8
+
+  # Voice Cloning (for XTTS)
+  voice_cloning:
+    enabled: false
+    reference_audio: null
+    language: "en"
+
+# Monitoring and Observability
+monitoring:
+  enabled: true
+  prometheus_port: 9090
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+  # Latency Targets (milliseconds) for alerting
+  latency_targets:
+    stt_ms: 500
+    translation_ms: 400
+    tts_ms: 200
+    total_ms: 2000
+
+# API Keys (loaded from environment variables)
+# Set these in your .env file or environment:
+# DEEPL_API_KEY=your_key_here
+# OPENAI_API_KEY=your_key_here
+# ELEVENLABS_API_KEY=your_key_here
+# AZURE_SPEECH_KEY=your_key_here
+# AZURE_SPEECH_REGION=your_region_here
+api_keys:
+  deepl: ${DEEPL_API_KEY}
+  openai: ${OPENAI_API_KEY}
+  elevenlabs: ${ELEVENLABS_API_KEY}
+  azure_speech_key: ${AZURE_SPEECH_KEY}
+  azure_speech_region: ${AZURE_SPEECH_REGION}
+
+# Model Cache Directory
+model_cache_dir: "~/.cache/sokuji-bridge/models"
