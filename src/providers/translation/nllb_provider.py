@@ -113,7 +113,7 @@ class NLLBProvider(TranslationProvider):
             # Load model with safetensors (safer and faster)
             self.model = AutoModelForSeq2SeqLM.from_pretrained(
                 self.model_name,
-                torch_dtype=torch.float16 if self.precision == "float16" and self.device == "cuda" else torch.float32,
+                dtype=torch.float16 if self.precision == "float16" and self.device == "cuda" else torch.float32,
                 use_safetensors=True,  # Force safetensors format to avoid CVE-2025-32434
             )
 

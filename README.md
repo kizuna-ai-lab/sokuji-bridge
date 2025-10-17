@@ -168,7 +168,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 - [faster-whisper](https://github.com/guillaumekln/faster-whisper) for fast STT
 - [NLLB](https://github.com/facebookresearch/fairseq/tree/nllb) for multilingual translation
-- [Piper](https://github.com/rhasspy/piper) for fast TTS
+- [Piper TTS](https://github.com/OHF-Voice/piper1-gpl) for fast local TTS
 - All the amazing open-source AI model creators
 
 ## 📧 Contact

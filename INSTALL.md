@@ -115,7 +115,27 @@ FileNotFoundError: Model not found
 - ✅ ~5-10GB free disk space
 - ✅ Patience (first download takes 5-10 minutes)
 
-Models are cached in: `~/.cache/sokuji-bridge/models/`
+Models are cached in:
+- **Whisper/NLLB**: `~/.cache/huggingface/`
+- **Piper TTS**: `models/piper/` (project directory) or `~/.local/share/piper/`
+
+**Manual Piper Model Download**:
+
+If automatic download fails, you can manually download Piper models:
+
+```bash
+# Download a specific voice model
+python -m piper.download_voices en_US-lessac-medium --download-dir models/piper
+
+# Download other voices
+python -m piper.download_voices zh_CN-huayan-medium --download-dir models/piper
+python -m piper.download_voices ja_JP-natsu-medium --download-dir models/piper
+
+# List all available voices
+python -m piper.download_voices
+```
+
+Available voices: [Piper Voices on Hugging Face](https://huggingface.co/rhasspy/piper-voices/tree/main)
 
 ---
 

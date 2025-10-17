@@ -3,11 +3,14 @@ Piper TTS Provider
 
 Fast, local text-to-speech using Piper.
 Optimized for CPU with high-quality neural voices.
+
+Uses piper1-gpl from https://github.com/OHF-Voice/piper1-gpl
 """
 
 import time
-import wave
 import io
+import subprocess
+import sys
 from typing import AsyncIterator, Optional, Dict, Any
 from pathlib import Path
 
@@ -66,6 +69,38 @@ class PiperProvider(TTSProvider):
             "de": ["de_DE-thorsten-medium"],
         }
 
+    def _download_model(self, model_name: str, download_dir: Path) -> None:
+        """
+        Download a Piper voice model using piper's download utility
+
+        Args:
+            model_name: Name of the model to download (e.g., "en_US-lessac-medium")
+            download_dir: Directory to download model into
+        """
+        try:
+            print(f"📥 Downloading Piper model: {model_name}")
+            print(f"📁 Download directory: {download_dir}")
+
+            # Create directory if it doesn't exist
+            download_dir.mkdir(parents=True, exist_ok=True)
+
+            # Run download command with specified directory
+            subprocess.run(
+                [
+                    sys.executable, "-m", "piper.download_voices",
+                    model_name,
+                    "--download-dir", str(download_dir)
+                ],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(f"✓ Model {model_name} downloaded successfully")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"Failed to download model {model_name}: {e.stderr}"
+            ) from e
+
     async def initialize(self) -> None:
         """Initialize Piper voice model"""
         if self.status == ProviderStatus.READY:
@@ -80,20 +115,39 @@ class PiperProvider(TTSProvider):
             if self.model_path:
                 model_path = Path(self.model_path)
             else:
-                # Auto-download model (requires piper models to be installed)
+                # Try to find the model
                 model_path = self._get_model_path(self.model_name)
 
+            # Auto-download if model doesn't exist
             if not model_path.exists():
-                raise FileNotFoundError(
-                    f"Piper model not found: {model_path}. "
-                    "Please download models from https://github.com/rhasspy/piper"
-                )
+                print(f"⚠️  Model not found at {model_path}")
+                print(f"🔄 Attempting to download {self.model_name}...")
+                try:
+                    # Use project-local models directory for downloads
+                    download_dir = Path.cwd() / "models" / "piper"
+                    self._download_model(self.model_name, download_dir)
+                    # Re-check model path after download
+                    model_path = self._get_model_path(self.model_name)
+                    if not model_path.exists():
+                        raise FileNotFoundError(
+                            f"Model still not found after download: {model_path}"
+                        )
+                except Exception as download_error:
+                    raise FileNotFoundError(
+                        f"Piper model not found: {model_path}. "
+                        f"Auto-download failed: {download_error}\n"
+                        "Please download manually from: "
+                        "https://github.com/OHF-Voice/piper1-gpl or use: "
+                        f"python -m piper.download_voices {self.model_name} --download-dir models/piper"
+                    ) from download_error
 
-            # Load voice
+            # Load voice using new piper1-gpl API
+            print(f"📂 Loading model from: {model_path}")
             self.voice = PiperVoice.load(str(model_path))
             self.sample_rate = self.voice.config.sample_rate
 
             self.status = ProviderStatus.READY
+            print(f"✓ Piper initialized: {self.model_name} @ {self.sample_rate}Hz")
 
         except ImportError as e:
             self.status = ProviderStatus.ERROR
@@ -150,23 +204,31 @@ class PiperProvider(TTSProvider):
         start_time = time.time()
 
         try:
-            # Override parameters from kwargs
+            from piper import SynthesisConfig
+
+            # Create synthesis configuration using new API
             length_scale = kwargs.get("speed", self.length_scale)
 
-            # Synthesize audio
+            # Note: piper1-gpl uses different parameter names
+            # length_scale controls speech speed (same as before)
+            # But noise_scale and noise_w are not in SynthesisConfig
+            # SynthesisConfig supports: volume, length_scale, normalize_audio
+            config = SynthesisConfig(
+                length_scale=length_scale,
+                volume=kwargs.get("volume", 1.0),
+                normalize_audio=kwargs.get("normalize_audio", True),
+            )
+
+            # Synthesize audio using new API
             audio_stream = io.BytesIO()
             sample_count = 0
 
-            # Use Piper's synthesize method
-            for audio_chunk in self.voice.synthesize_stream_raw(
-                text,
-                speaker_id=self.speaker_id,
-                length_scale=length_scale,
-                noise_scale=self.noise_scale,
-                noise_w=self.noise_w,
-            ):
-                audio_stream.write(audio_chunk)
-                sample_count += len(audio_chunk) // 2  # int16 = 2 bytes per sample
+            # Use new synthesize() method that returns audio chunks
+            for chunk in self.voice.synthesize(text):
+                # Extract audio bytes from chunk
+                audio_bytes = chunk.audio_int16_bytes
+                audio_stream.write(audio_bytes)
+                sample_count += len(audio_bytes) // 2  # int16 = 2 bytes per sample
 
             audio_data = audio_stream.getvalue()
 
@@ -242,21 +304,34 @@ class PiperProvider(TTSProvider):
         Returns:
             Path to model file
         """
-        # Check common model directories
+        # Check common model directories for piper1-gpl
         model_dirs = [
+            # Project root (where download_voices downloads by default)
+            Path.cwd(),
+            # Project-local models directory
+            Path.cwd() / "models" / "piper",
+            # User home locations
+            Path.home() / ".local" / "share" / "piper",
+            # Legacy piper locations
             Path.home() / ".cache" / "piper" / "models",
             Path.home() / ".local" / "share" / "piper" / "models",
             Path("/usr/share/piper/models"),
-            Path("models") / "piper",
         ]
 
         for model_dir in model_dirs:
+            # Try direct path (piper1-gpl format)
             model_path = model_dir / f"{model_name}.onnx"
             if model_path.exists():
                 return model_path
 
-        # Return default path (will fail if not exists)
-        return model_dirs[0] / f"{model_name}.onnx"
+            # Try with subdirectory (some installations organize by language)
+            # e.g., ~/.local/share/piper/en_US-lessac-medium/en_US-lessac-medium.onnx
+            model_subdir_path = model_dir / model_name / f"{model_name}.onnx"
+            if model_subdir_path.exists():
+                return model_subdir_path
+
+        # Return default path for download (project-local models directory)
+        return Path.cwd() / "models" / "piper" / f"{model_name}.onnx"
 
     def _infer_gender(self, model_name: str) -> str:
         """Infer gender from model name"""

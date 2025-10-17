@@ -48,6 +48,7 @@ htmlcov/
 # Models and cache
 models/
 *.onnx
+*.onnx.json
 *.bin
 *.pth
 *.pt
