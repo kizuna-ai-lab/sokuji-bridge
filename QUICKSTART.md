@@ -6,7 +6,7 @@ Get Sokuji-Bridge running in 5 minutes!
 
 - Python 3.10 or higher
 - NVIDIA GPU with 12GB+ VRAM (for local models)
-- CUDA 11.8+ (if using GPU)
+- CUDA 12.1+ or 13.0 (if using GPU)
 
 ## Installation
 
@@ -28,12 +28,14 @@ pip install -r requirements.txt
 #### Option B: GPU-accelerated (recommended)
 
 ```bash
-# Install PyTorch with CUDA support first
-pip install torch==2.1.0+cu118 --index-url https://download.pytorch.org/whl/cu118
+# Install PyTorch with CUDA 12.1/13.0 support first
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
 
 # Then install other dependencies
 pip install -r requirements.txt
 ```
+
+**Note**: PyTorch cu121 build is compatible with both CUDA 12.1 and CUDA 13.0.
 
 ### 3. Download models
 

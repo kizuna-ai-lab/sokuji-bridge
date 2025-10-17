@@ -20,7 +20,7 @@
 - Python 3.10+
 - Docker & Docker Compose
 - NVIDIA GPU with 12GB+ VRAM (for local providers)
-- CUDA 11.8+ and cuDNN
+- CUDA 12.1+ or 13.0 (for GPU acceleration)
 
 ### Installation
 
