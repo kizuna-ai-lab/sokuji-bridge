@@ -10,7 +10,7 @@ import torch
 from typing import AsyncIterator, Optional, Dict, Any
 from collections import defaultdict
 
-from ..base import (
+from providers.base import (
     TranslationProvider,
     TranslationResult,
     ProviderStatus,
@@ -110,10 +110,11 @@ class NLLBProvider(TranslationProvider):
                 use_fast=True,
             )
 
-            # Load model
+            # Load model with safetensors (safer and faster)
             self.model = AutoModelForSeq2SeqLM.from_pretrained(
                 self.model_name,
                 torch_dtype=torch.float16 if self.precision == "float16" and self.device == "cuda" else torch.float32,
+                use_safetensors=True,  # Force safetensors format to avoid CVE-2025-32434
             )
 
             # Move model to device
@@ -215,7 +216,7 @@ class NLLBProvider(TranslationProvider):
             with torch.no_grad():
                 generated_tokens = self.model.generate(
                     **inputs,
-                    forced_bos_token_id=self.tokenizer.lang_code_to_id[tgt_lang_code],
+                    forced_bos_token_id=self.tokenizer.convert_tokens_to_ids(tgt_lang_code),
                     max_length=self.max_length,
                     num_beams=self.num_beams,
                     do_sample=False,
@@ -329,7 +330,7 @@ class NLLBProvider(TranslationProvider):
                 with torch.no_grad():
                     generated_tokens = self.model.generate(
                         **inputs,
-                        forced_bos_token_id=self.tokenizer.lang_code_to_id[tgt_lang_code],
+                        forced_bos_token_id=self.tokenizer.convert_tokens_to_ids(tgt_lang_code),
                         max_length=self.max_length,
                         num_beams=self.num_beams,
                         do_sample=False,
@@ -416,5 +417,5 @@ class NLLBProvider(TranslationProvider):
 
 
 # Register provider
-from ..base import register_provider
+from providers.base import register_provider
 register_provider("translation", "nllb_local", NLLBProvider)
