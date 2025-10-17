@@ -10,7 +10,7 @@ from typing import AsyncIterator, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
-from ..providers.base import (
+from providers.base import (
     STTProvider,
     TranslationProvider,
     TTSProvider,
@@ -20,7 +20,7 @@ from ..providers.base import (
     SynthesisResult,
     ProviderStatus,
 )
-from ..config.schemas import SokujiBridgeConfig
+from config.schemas import SokujiBridgeConfig
 
 
 class PipelineStatus(Enum):
