@@ -29,15 +29,18 @@ faster-whisper>=0.10.0
 
 # Translation Provider: NLLB
 transformers>=4.35.0
-torch>=2.1.0
+torch>=2.5.0
 sentencepiece>=0.1.99
 
 # TTS Provider: Piper
 piper-tts>=1.2.0
 
-# Optional: GPU acceleration
-# If you have NVIDIA GPU, install:
-# torch==2.1.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+# Optional: GPU acceleration (CUDA 12.1+ / 13.0 compatible)
+# If you have NVIDIA GPU, install PyTorch with CUDA support:
+# For CUDA 12.1 / 13.0:
+# pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+# For CPU only:
+# pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 
 # Development dependencies (optional)
 # pytest>=7.4.0
