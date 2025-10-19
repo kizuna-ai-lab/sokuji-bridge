@@ -92,48 +92,50 @@ Running full pipeline test...
 Example completed successfully! 🎉
 ```
 
-## Configuration Profiles
+## Configuration
 
-Sokuji-Bridge comes with 4 pre-configured profiles:
-
-### Fast (Default) - Pure Local
+Sokuji-Bridge uses YAML-based configuration. The default configuration (`configs/default.yaml`) is automatically loaded and optimized for low latency with local models:
 
 ```yaml
-STT: faster-whisper (medium)
-Translation: NLLB-200 (1.3B)
-TTS: Piper (CPU)
-Latency: ~1.5-2s
-Cost: $0/month
+stt:
+  provider: faster_whisper
+  config:
+    model_size: medium
+    device: cuda
+    vad_filter: true
+
+translation:
+  provider: nllb_local
+  config:
+    model: facebook/nllb-200-distilled-1.3B
+    device: cuda
+
+tts:
+  provider: piper
+  config:
+    model: en_US-lessac-medium
 ```
 
-### Hybrid - Mixed Local/API
+**Performance:** ~1.5-2s latency | $0/month | ~5GB VRAM
+
+### Customizing Configuration
+
+Edit `configs/default.yaml` directly to change providers or settings:
 
 ```yaml
-STT: faster-whisper (local)
-Translation: DeepL API
-TTS: Piper (local)
-Latency: ~2-3s
-Cost: $10-30/month
+# Example: Use cloud translation for better quality
+translation:
+  provider: deepl_api  # Changed from nllb_local
+  config:
+    formality: default
 ```
 
-### Quality - Best Quality
-
 ```yaml
-STT: faster-whisper (large-v3)
-Translation: GPT-4o-mini
-TTS: XTTS v2
-Latency: ~3-5s
-Cost: $20-50/month
-```
-
-### CPU - No GPU Required
-
-```yaml
-STT: faster-whisper (base, int8)
-Translation: Google Translate API
-TTS: Piper (CPU)
-Latency: ~5-10s
-Cost: Low
+# Example: Use larger STT model for better accuracy
+stt:
+  config:
+    model_size: large-v3  # Changed from medium
+    compute_type: float16
 ```
 
 ## Usage Examples
@@ -147,8 +149,8 @@ from core.pipeline import TranslationPipeline
 from providers.base import AudioChunk
 
 async def translate_audio():
-    # Load configuration
-    config = ConfigManager.from_profile("fast").get_config()
+    # Load configuration (auto-loads configs/default.yaml)
+    config = ConfigManager().get_config()
 
     # Create pipeline
     pipeline = TranslationPipeline(...)
@@ -166,18 +168,18 @@ async def translate_audio():
 asyncio.run(translate_audio())
 ```
 
-### Configuration File
+### Using Custom Configuration File
 
 ```python
 # Load from custom config file
 from pathlib import Path
-config = ConfigManager.from_file(Path("my_config.yaml")).get_config()
+config = ConfigManager(config_path=Path("my_config.yaml")).get_config()
 ```
 
-### Switch Providers at Runtime
+### Modifying Configuration at Runtime
 
 ```python
-config_manager = ConfigManager.from_profile("fast")
+config_manager = ConfigManager()
 config_manager.update_provider("translation", "deepl_api", {
     "formality": "more"
 })

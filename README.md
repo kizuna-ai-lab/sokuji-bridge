@@ -9,7 +9,7 @@
 - **Modular Architecture**: Swap any STT, Translation, or TTS provider easily
 - **Low Latency**: <2 seconds end-to-end latency with local providers
 - **Docker-First**: Microservice architecture for flexible deployment
-- **Multiple Configurations**: Fast (local), Hybrid (mixed), Quality (API) profiles
+- **Flexible Configuration**: YAML-based configuration for easy customization
 - **Streaming Pipeline**: Asynchronous processing for minimal delay
 - **Smart Segmentation**: VAD-based intelligent audio chunking
 
@@ -41,7 +41,7 @@ python scripts/download_models.sh
 
 ```bash
 # Start translation (microphone input)
-sokuji translate --source zh --target en --profile fast
+sokuji translate --source zh --target en
 
 # Translate audio file
 sokuji translate --source zh --target en --input audio.mp3 --output translated.wav
@@ -50,31 +50,48 @@ sokuji translate --source zh --target en --input audio.mp3 --output translated.w
 sokuji serve --host 0.0.0.0 --port 8000
 ```
 
-## 📊 Provider Configurations
+## ⚙️ Configuration
 
-### Profile A: Fast Local (Default)
+Sokuji-Bridge uses a YAML-based configuration system. The default configuration (`configs/default.yaml`) is optimized for low latency with local models:
+
 ```yaml
-STT: faster-whisper (medium)
-Translation: NLLB-200 (1.3B)
-TTS: Piper (CPU)
-Latency: 1.5-2s | Cost: $0/month | VRAM: ~5GB
+stt:
+  provider: faster_whisper
+  config:
+    model_size: medium
+    device: cuda
+    vad_filter: true  # Built-in VAD filtering
+
+translation:
+  provider: nllb_local
+  config:
+    model: facebook/nllb-200-distilled-1.3B
+    device: cuda
+
+tts:
+  provider: piper
+  config:
+    model: en_US-lessac-medium
 ```
 
-### Profile B: Hybrid Quality
-```yaml
-STT: faster-whisper (local)
-Translation: DeepL API (cloud)
-TTS: Piper (local)
-Latency: 2-3s | Cost: $10-30/month
+**Performance:** 1.5-2s latency | $0/month | ~5GB VRAM
+
+### Customization
+
+Edit `configs/default.yaml` to customize providers, models, or parameters:
+
+```bash
+# Use larger STT model for better accuracy
+stt:
+  config:
+    model_size: large-v3  # medium → large-v3
+
+# Use cloud translation for better quality
+translation:
+  provider: deepl_api  # nllb_local → deepl_api
 ```
 
-### Profile C: Maximum Quality
-```yaml
-STT: faster-whisper (large-v3)
-Translation: GPT-4o-mini API
-TTS: XTTS v2 (voice cloning)
-Latency: 3-5s | Cost: $20-50/month | VRAM: ~10GB
-```
+See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
 
 ## 🏗️ Architecture
 

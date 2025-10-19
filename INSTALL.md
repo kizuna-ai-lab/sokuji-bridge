@@ -166,8 +166,8 @@ from sokuji_bridge.providers.stt.faster_whisper_provider import FasterWhisperPro
 from sokuji_bridge.providers.translation.nllb_provider import NLLBProvider
 from sokuji_bridge.providers.tts.piper_provider import PiperProvider
 
-# Load configuration
-config = ConfigManager.from_profile("fast").get_config()
+# Load configuration (auto-loads configs/default.yaml)
+config = ConfigManager().get_config()
 
 # Create providers
 stt = FasterWhisperProvider(config.stt.config)
