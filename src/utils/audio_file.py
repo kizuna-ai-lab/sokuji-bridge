@@ -174,12 +174,28 @@ class AudioFileReader(AudioInput):
         # Resample if needed
         if self._original_sample_rate != self.target_sample_rate:
             ratio = self.target_sample_rate / self._original_sample_rate
-            new_length = int(len(audio) * ratio)
-            audio = np.interp(
-                np.linspace(0, len(audio), new_length),
-                np.arange(len(audio)),
-                audio
-            )
+
+            # Handle multi-channel audio
+            if audio.ndim == 1:
+                # Mono audio
+                new_length = int(len(audio) * ratio)
+                audio = np.interp(
+                    np.linspace(0, len(audio), new_length),
+                    np.arange(len(audio)),
+                    audio
+                )
+            else:
+                # Multi-channel audio - resample each channel separately
+                new_length = int(audio.shape[0] * ratio)
+                resampled_channels = []
+                for ch in range(audio.shape[1]):
+                    resampled = np.interp(
+                        np.linspace(0, audio.shape[0], new_length),
+                        np.arange(audio.shape[0]),
+                        audio[:, ch]
+                    )
+                    resampled_channels.append(resampled)
+                audio = np.stack(resampled_channels, axis=-1)
 
         return audio
 
