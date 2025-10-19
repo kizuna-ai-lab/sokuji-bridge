@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from config.manager import ConfigManager
 from providers.stt.faster_whisper_provider import FasterWhisperProvider
 from utils.microphone import MicrophoneInput
-from utils.vad import EnergyVAD
 
 
 async def test_stt_only(

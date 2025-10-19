@@ -9,16 +9,6 @@ from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
 
 
-class VADConfig(BaseModel):
-    """Voice Activity Detection configuration"""
-    enabled: bool = True
-    model: Literal["silero", "webrtc"] = "silero"
-    threshold: float = Field(default=0.5, ge=0.0, le=1.0)
-    min_speech_duration_ms: int = Field(default=250, ge=0)
-    max_speech_duration_s: int = Field(default=30, ge=1)
-    min_silence_duration_ms: int = Field(default=300, ge=0)
-
-
 class AudioConfig(BaseModel):
     """Audio processing configuration"""
     sample_rate: int = Field(default=16000, ge=8000, le=48000)
@@ -41,7 +31,6 @@ class PipelineConfig(BaseModel):
     source_language: str = "auto"
     target_language: str = "en"
 
-    vad: VADConfig = Field(default_factory=VADConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     segmentation: SegmentationConfig = Field(default_factory=SegmentationConfig)
 

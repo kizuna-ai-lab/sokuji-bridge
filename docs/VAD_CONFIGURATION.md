@@ -2,9 +2,22 @@
 
 Voice Activity Detection (VAD) configuration for faster-whisper in Sokuji-Bridge.
 
+> **⚠️ Important Change (v0.2.0):**
+> Pipeline VAD (`src/utils/vad.py`) has been removed as of v0.2.0.
+> **All STT providers have built-in VAD** - faster-whisper uses **Silero VAD** internally.
+> This document covers configuration of faster-whisper's built-in VAD parameters only.
+
 ## Overview
 
 Sokuji-Bridge uses faster-whisper's built-in VAD (powered by Silero VAD) to filter out non-speech audio and improve transcription quality. All VAD parameters can be configured in `configs/default.yaml`.
+
+### Why No Separate Pipeline VAD?
+
+- **faster-whisper** includes high-quality Silero VAD (1.8MB, processes 30ms chunks in ~1ms)
+- **OpenAI Whisper API** has server-side VAD
+- **Azure Speech Services** has built-in VAD
+- Separate pipeline VAD was redundant and caused confusion
+- Direct STT provider VAD is more accurate and better integrated
 
 ## Configuration Location
 
@@ -171,20 +184,28 @@ Monitor the output for:
 - ✅ No hallucinations from background sounds
 - ✅ Complete words/sentences (not cut off)
 
-## Advanced: Multiple VAD Layers
+## Migration from Pipeline VAD (v0.1.x → v0.2.0)
 
-Sokuji-Bridge supports two VAD layers:
+If you were using `pipeline.vad` configuration in v0.1.x:
 
-1. **Whisper Built-in VAD** (this document)
-   - Configured in `stt.config.vad_*` parameters
-   - Applied during transcription
+```yaml
+# OLD (v0.1.x) - No longer supported
+pipeline:
+  vad:
+    enabled: true
+    model: "silero"
+    threshold: 0.5
+```
 
-2. **Pipeline VAD** (optional)
-   - Configured in `pipeline.vad` section
-   - Pre-processing before STT
-   - Uses EnergyVAD or SileroVAD
+```yaml
+# NEW (v0.2.0+) - Use STT provider VAD
+stt:
+  config:
+    vad_filter: true
+    vad_threshold: 0.5  # Equivalent to old threshold
+```
 
-For most use cases, **Whisper's built-in VAD is sufficient**.
+**For all use cases, STT provider's built-in VAD is sufficient and more accurate.**
 
 ## Troubleshooting
 

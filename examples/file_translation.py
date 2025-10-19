@@ -18,7 +18,6 @@ from providers.stt.faster_whisper_provider import FasterWhisperProvider
 from providers.translation.nllb_provider import NLLBProvider
 from providers.tts.piper_provider import PiperProvider
 from utils.audio_file import AudioFileReader, AudioFileWriter
-from utils.vad import EnergyVAD
 
 
 async def translate_audio_file(

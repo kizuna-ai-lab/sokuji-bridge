@@ -20,17 +20,12 @@ from providers.translation.nllb_provider import NLLBProvider
 from providers.tts.piper_provider import PiperProvider
 from utils.microphone import MicrophoneInput
 from utils.speaker import SpeakerOutput
-from utils.vad import EnergyVAD
 
 
 async def real_time_translation(
     source_lang: str = "zh",
     target_lang: str = "en",
     config_path: Optional[Path] = None,
-    use_vad: bool = False,
-    vad_energy_threshold: float = 0.005,
-    min_speech_duration_ms: float = 100,
-    min_silence_duration_ms: float = 300,
     chunk_duration_ms: float = 2000,
 ):
     """
@@ -40,11 +35,11 @@ async def real_time_translation(
         source_lang: Source language code (default: zh - Chinese)
         target_lang: Target language code (default: en - English)
         config_path: Path to configuration file (default: configs/default.yaml)
-        use_vad: Use VAD for segmentation (default: False - use fixed chunks)
-        vad_energy_threshold: VAD energy threshold for speech detection (default: 0.005)
-        min_speech_duration_ms: Minimum speech duration in ms (default: 100)
-        min_silence_duration_ms: Minimum silence duration to split segments (default: 300)
-        chunk_duration_ms: Fixed chunk duration when VAD is disabled (default: 2000ms)
+        chunk_duration_ms: Audio chunk duration in milliseconds (default: 2000ms)
+
+    Note:
+        VAD is handled automatically by faster-whisper's built-in Silero VAD.
+        Configure VAD parameters in configs/default.yaml under stt.config.vad_*
     """
     print("=" * 70)
     print("🌉 Sokuji-Bridge - Real-time Translation Demo")
@@ -120,46 +115,20 @@ async def real_time_translation(
     print(f"✓ Pipeline ready: {pipeline.get_status().value}")
     print()
 
-    # 5. Initialize VAD (optional)
-    vad = None
-    if use_vad:
-        print("🎙️  Initializing VAD for intelligent speech segmentation...")
-        vad = EnergyVAD(
-            energy_threshold=vad_energy_threshold,
-            sample_rate=16000
-        )
-        await vad.initialize()
-        print(f"✓ VAD ready: threshold={vad_energy_threshold}, "
-              f"min_speech={min_speech_duration_ms}ms, "
-              f"min_silence={min_silence_duration_ms}ms")
-    else:
-        print(f"⚠️  VAD disabled - using fixed {chunk_duration_ms}ms chunks for faster response")
-    print()
-
-    # 6. Start real-time translation
+    # 5. Start real-time translation
     print("=" * 70)
     print("🎤 Listening... (Press Ctrl+C to stop)")
     print("   Speak in Chinese to hear English translation")
-    if use_vad:
-        print(f"   Mode: VAD-based segmentation (stop speaking for {min_silence_duration_ms}ms to trigger)")
-    else:
-        print(f"   Mode: Fixed {chunk_duration_ms}ms chunks (processes automatically)")
+    print(f"   Mode: Fixed {chunk_duration_ms}ms chunks")
+    print("   (VAD filtering handled by faster-whisper's built-in Silero VAD)")
     print("=" * 70)
     print()
 
     try:
         speech_count = 0
 
-        if use_vad:
-            # Use VAD to segment audio at natural speech boundaries
-            audio_stream = vad.segment_audio(
-                mic.stream(),
-                min_speech_duration_ms=min_speech_duration_ms,
-                min_silence_duration_ms=min_silence_duration_ms
-            )
-        else:
-            # Use fixed-duration chunks
-            async def fixed_duration_chunker():
+        # Use fixed-duration chunks
+        async def fixed_duration_chunker():
                 """Accumulate audio chunks into fixed-duration segments"""
                 import numpy as np
                 from providers.base import AudioChunk
@@ -190,7 +159,7 @@ async def real_time_translation(
                         buffer.clear()
                         buffer_duration_ms = 0.0
 
-            audio_stream = fixed_duration_chunker()
+        audio_stream = fixed_duration_chunker()
 
         # Stream through pipeline and play results
         async for result in pipeline.process_audio_stream(audio_stream):
@@ -290,8 +259,7 @@ def main():
                 source_lang="zh",
                 target_lang="en",
                 config_path=None,  # Use default configs/default.yaml
-                use_vad=False,  # Disable VAD - use fixed chunks instead
-                chunk_duration_ms=2000,  # Process every 2 seconds automatically
+                chunk_duration_ms=2000,  # Process every 2 seconds
             )
         )
 

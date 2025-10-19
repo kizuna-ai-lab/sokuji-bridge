@@ -10,14 +10,8 @@ pipeline:
   source_language: "auto"  # Auto-detect or specify: zh, en, ja, etc.
   target_language: "en"
 
-  # Voice Activity Detection
-  vad:
-    enabled: true
-    model: "silero"  # silero or webrtc
-    threshold: 0.5
-    min_speech_duration_ms: 250
-    max_speech_duration_s: 30
-    min_silence_duration_ms: 300
+  # NOTE: VAD is handled by STT provider (faster-whisper uses Silero VAD)
+  # Configure VAD parameters in stt.config section below
 
   # Audio Configuration
   audio:
