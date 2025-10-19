@@ -79,6 +79,10 @@ class SynthesisResult:
     duration_ms: float
     format: str = "int16"
 
+    # Optional: Intermediate processing results for debugging/display
+    transcription: Optional['TranscriptionResult'] = None
+    translation: Optional['TranslationResult'] = None
+
     def __str__(self) -> str:
         return f"Synthesized {len(self.text)} chars → {self.duration_ms:.0f}ms audio"
 

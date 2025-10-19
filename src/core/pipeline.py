@@ -100,7 +100,8 @@ class TranslationPipeline:
         # Async queues for pipeline stages
         self._audio_queue: asyncio.Queue[Optional[AudioChunk]] = asyncio.Queue(maxsize=10)
         self._text_queue: asyncio.Queue[Optional[TranscriptionResult]] = asyncio.Queue(maxsize=10)
-        self._translated_queue: asyncio.Queue[Optional[TranslationResult]] = asyncio.Queue(maxsize=10)
+        # Translation queue now carries tuple (transcription, translation) to preserve intermediate results
+        self._translated_queue: asyncio.Queue[Optional[tuple]] = asyncio.Queue(maxsize=10)
         self._audio_out_queue: asyncio.Queue[Optional[SynthesisResult]] = asyncio.Queue(maxsize=10)
 
         # Control flags
@@ -343,7 +344,8 @@ class TranslationPipeline:
                     )
                     self.metrics.total_translations += 1
 
-                    await self._translated_queue.put(result)
+                    # Pass both transcription and translation to preserve intermediate results
+                    await self._translated_queue.put((transcription, result))
 
                 except Exception as e:
                     self.metrics.errors += 1
@@ -356,11 +358,14 @@ class TranslationPipeline:
         """TTS worker coroutine"""
         try:
             while not self._stop_event.is_set():
-                translation = await self._translated_queue.get()
-                if translation is None:  # End of stream signal
+                data = await self._translated_queue.get()
+                if data is None:  # End of stream signal
                     break
 
                 try:
+                    # Unpack transcription and translation
+                    transcription, translation = data
+
                     start_time = time.time()
                     voice_id = self.config.tts.voice or "default"
                     result = await self.tts.synthesize(
@@ -374,6 +379,10 @@ class TranslationPipeline:
                         self.metrics.tts_latency_ms * 0.9 + duration_ms * 0.1
                     )
                     self.metrics.total_syntheses += 1
+
+                    # Attach intermediate results to synthesis result
+                    result.transcription = transcription
+                    result.translation = translation
 
                     await self._audio_out_queue.put(result)
 
