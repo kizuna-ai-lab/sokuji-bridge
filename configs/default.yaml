@@ -42,17 +42,15 @@ stt:
     compute_type: "float16"  # int8, float16, float32
     num_workers: 2
     language: null  # Auto-detect, or specify: zh, en, ja, etc.
-    initial_prompt: ""
+    initial_prompt: null  # Cleared to reduce hallucinations
     beam_size: 5
     best_of: 5
     temperature: 0.0
-    condition_on_previous_text: true
+    condition_on_previous_text: false  # Disabled to reduce context-based hallucinations
 
-  # Performance Optimization
-  optimization:
-    batch_size: 1
-    enable_vad_filter: true
-    vad_threshold: 0.5
+    # VAD Configuration (IMPORTANT: must be in config section to be passed to provider)
+    vad_filter: true  # Enable Whisper's built-in VAD filtering
+    vad_threshold: 0.95  # Very strict: only process audio VAD is 95% confident is speech
 
 # Translation Configuration
 translation:

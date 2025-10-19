@@ -171,13 +171,16 @@ def get_fast_profile() -> SokujiBridgeConfig:
                 "model_size": "medium",
                 "compute_type": "float16",
                 "num_workers": 2,
+                "language": None,
+                "initial_prompt": None,
+                "beam_size": 5,
+                "best_of": 5,
+                "temperature": 0.0,
+                "condition_on_previous_text": False,  # Disable context to reduce hallucinations
+                "vad_filter": True,        # Enable Whisper's built-in VAD
+                "vad_threshold": 0.95,     # Very strict threshold to prevent audio hallucinations
             },
             device="cuda",
-            optimization={
-                "batch_size": 1,
-                "enable_vad_filter": True,
-                "vad_threshold": 0.5,
-            },
         ),
         translation=TranslationConfig(
             provider="nllb_local",
