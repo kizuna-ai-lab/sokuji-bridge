@@ -58,7 +58,14 @@ class FasterWhisperProvider(STTProvider):
         self.best_of = config.get("best_of", 5)
         self.temperature = config.get("temperature", 0.0)
         self.vad_filter = config.get("vad_filter", False)
+
+        # VAD parameters (for Whisper's built-in VAD)
         self.vad_threshold = config.get("vad_threshold", 0.5)
+        self.vad_neg_threshold = config.get("vad_neg_threshold", 0.35)
+        self.vad_speech_pad_ms = config.get("vad_speech_pad_ms", 400)
+        self.vad_min_speech_duration_ms = config.get("vad_min_speech_duration_ms", 250)
+        self.vad_max_speech_duration_s = config.get("vad_max_speech_duration_s", 30.0)
+        self.vad_min_silence_duration_ms = config.get("vad_min_silence_duration_ms", 2000)
 
         # Model instance (initialized in initialize())
         self.model = None
@@ -151,6 +158,18 @@ class FasterWhisperProvider(STTProvider):
             # Use provided language or configured language
             lang = language or self.language
 
+            # Build VAD parameters if VAD is enabled
+            vad_params = None
+            if self.vad_filter:
+                vad_params = {
+                    "threshold": self.vad_threshold,
+                    "neg_threshold": self.vad_neg_threshold,
+                    "speech_pad_ms": self.vad_speech_pad_ms,
+                    "min_speech_duration_ms": self.vad_min_speech_duration_ms,
+                    "max_speech_duration_s": self.vad_max_speech_duration_s,
+                    "min_silence_duration_ms": self.vad_min_silence_duration_ms,
+                }
+
             # Transcribe
             segments, info = self.model.transcribe(
                 audio_array,
@@ -159,9 +178,7 @@ class FasterWhisperProvider(STTProvider):
                 best_of=self.best_of,
                 temperature=self.temperature,
                 vad_filter=self.vad_filter,
-                vad_parameters={
-                    "threshold": self.vad_threshold,
-                } if self.vad_filter else None,
+                vad_parameters=vad_params,
             )
 
             # Collect all segments

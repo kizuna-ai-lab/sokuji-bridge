@@ -32,7 +32,7 @@ async def test_configuration():
     try:
         # Load configuration
         print("📋 Loading fast profile...")
-        manager = config_manager.ConfigManager.from_profile("fast")
+        manager = config_manager.ConfigManager()
         config = manager.get_config()
 
         print(f"✓ Configuration loaded successfully!")
@@ -72,7 +72,7 @@ async def test_translation_simple():
 
     try:
         # Load config
-        manager = config_manager.ConfigManager.from_profile("fast")
+        manager = config_manager.ConfigManager()
         config = manager.get_config()
 
         # Initialize translator
@@ -118,7 +118,7 @@ async def test_providers_health():
     print()
 
     try:
-        manager = config_manager.ConfigManager.from_profile("fast")
+        manager = config_manager.ConfigManager()
         config = manager.get_config()
 
         # Test STT

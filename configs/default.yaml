@@ -52,6 +52,13 @@ stt:
     vad_filter: true  # Enable Whisper's built-in VAD filtering
     vad_threshold: 0.95  # Very strict: only process audio VAD is 95% confident is speech
 
+    # Additional VAD Parameters (passed to faster-whisper's vad_parameters)
+    vad_neg_threshold: 0.35  # Negative threshold for non-speech detection (default: 0.35)
+    vad_speech_pad_ms: 400  # Padding added to speech segments in milliseconds (default: 400)
+    vad_min_speech_duration_ms: 250  # Minimum speech duration to keep in milliseconds (default: 250)
+    vad_max_speech_duration_s: 30.0  # Maximum speech duration in seconds (default: 30.0)
+    vad_min_silence_duration_ms: 2000  # Minimum silence duration to split segments in milliseconds (default: 2000)
+
 # Translation Configuration
 translation:
   provider: "nllb_local"

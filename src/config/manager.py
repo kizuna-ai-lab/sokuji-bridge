@@ -10,44 +10,116 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
-from .schemas import SokujiBridgeConfig, get_profile, PROFILES
+from .schemas import (
+    SokujiBridgeConfig,
+    PipelineConfig,
+    STTConfig,
+    TranslationConfig,
+    TTSConfig,
+)
 
 
 class ConfigManager:
     """Configuration manager for loading and managing configs"""
+
+    DEFAULT_CONFIG_PATH = Path("configs/default.yaml")
 
     def __init__(self, config_path: Optional[Path] = None):
         """
         Initialize configuration manager
 
         Args:
-            config_path: Optional path to configuration file
+            config_path: Optional path to configuration file (defaults to configs/default.yaml)
         """
+        # Use default path if not specified
+        if config_path is None:
+            config_path = self.DEFAULT_CONFIG_PATH
+
         self.config_path = config_path
         self._config: Optional[SokujiBridgeConfig] = None
 
         # Load environment variables
         load_dotenv()
 
-    @classmethod
-    def from_profile(cls, profile_name: str) -> "ConfigManager":
+        # Auto-create default config if it doesn't exist
+        if self.config_path == self.DEFAULT_CONFIG_PATH and not self.config_path.exists():
+            self._create_default_config()
+
+        # Auto-load configuration
+        if self.config_path.exists():
+            self.load()
+
+    def _create_default_config(self) -> None:
         """
-        Create ConfigManager from predefined profile
+        Create default configuration file if it doesn't exist
 
-        Args:
-            profile_name: Profile name ("fast", "hybrid", "quality", "cpu")
-
-        Returns:
-            ConfigManager with profile configuration
-
-        Example:
-            >>> manager = ConfigManager.from_profile("fast")
-            >>> config = manager.get_config()
+        Uses the default fast profile settings as a template.
         """
-        manager = cls()
-        manager._config = get_profile(profile_name)
-        manager._inject_env_vars()
-        return manager
+        # Create default configuration based on fast profile settings
+        default_config = SokujiBridgeConfig(
+            pipeline=PipelineConfig(
+                name="fast_local",
+                source_language="auto",
+                target_language="en",
+            ),
+            stt=STTConfig(
+                provider="faster_whisper",
+                config={
+                    "model_size": "medium",
+                    "compute_type": "float16",
+                    "num_workers": 2,
+                    "language": None,
+                    "initial_prompt": None,
+                    "beam_size": 5,
+                    "best_of": 5,
+                    "temperature": 0.0,
+                    "condition_on_previous_text": False,
+                    "vad_filter": True,
+                    "vad_threshold": 0.95,
+                    "vad_neg_threshold": 0.35,
+                    "vad_speech_pad_ms": 400,
+                    "vad_min_speech_duration_ms": 250,
+                    "vad_max_speech_duration_s": 30.0,
+                    "vad_min_silence_duration_ms": 2000,
+                },
+                device="cuda",
+            ),
+            translation=TranslationConfig(
+                provider="nllb_local",
+                config={
+                    "model": "facebook/nllb-200-distilled-1.3B",
+                    "precision": "float16",
+                    "num_beams": 4,
+                },
+                device="cuda",
+                batching={
+                    "enabled": True,
+                    "max_batch_size": 4,
+                    "timeout_ms": 500,
+                },
+                cache={
+                    "enabled": True,
+                    "ttl_seconds": 3600,
+                    "max_entries": 10000,
+                },
+            ),
+            tts=TTSConfig(
+                provider="piper",
+                config={
+                    "model": "en_US-lessac-medium",
+                    "speaker_id": 0,
+                    "length_scale": 1.0,
+                },
+                device="cpu",
+            ),
+        )
+
+        # Save to default path
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.config_path, "w") as f:
+            f.write(default_config.model_dump_yaml())
+
+        print(f"✓ Created default configuration file: {self.config_path}")
 
     @classmethod
     def from_file(cls, config_path: Path) -> "ConfigManager":
@@ -198,9 +270,6 @@ class ConfigManager:
 
         return len(errors) == 0, errors
 
-    def list_profiles(self) -> list[str]:
-        """List available configuration profiles"""
-        return list(PROFILES.keys())
 
     def get_provider_config(self, category: str) -> Dict[str, Any]:
         """
@@ -284,45 +353,34 @@ class ConfigManager:
 
 # Convenience functions
 
-def load_config(
-    config_path: Optional[Path] = None,
-    profile: Optional[str] = None,
-) -> SokujiBridgeConfig:
+def load_config(config_path: Optional[Path] = None) -> SokujiBridgeConfig:
     """
-    Load configuration from file or profile
+    Load configuration from file
 
     Args:
-        config_path: Optional path to configuration file
-        profile: Optional profile name ("fast", "hybrid", "quality", "cpu")
+        config_path: Optional path to configuration file (defaults to configs/default.yaml)
 
     Returns:
         Loaded configuration
 
     Example:
-        >>> config = load_config(profile="fast")
+        >>> config = load_config()  # Uses configs/default.yaml
         >>> config = load_config(config_path=Path("configs/custom.yaml"))
     """
-    if config_path:
-        manager = ConfigManager.from_file(config_path)
-    elif profile:
-        manager = ConfigManager.from_profile(profile)
-    else:
-        # Default to fast profile
-        manager = ConfigManager.from_profile("fast")
-
+    manager = ConfigManager(config_path=config_path)
     return manager.get_config()
 
 
-def create_default_config(output_path: Path, profile: str = "fast") -> None:
+def create_default_config(output_path: Path) -> None:
     """
     Create default configuration file
 
     Args:
         output_path: Path to save configuration file
-        profile: Profile name to use as template
 
     Example:
-        >>> create_default_config(Path("configs/default.yaml"), profile="fast")
+        >>> create_default_config(Path("configs/custom.yaml"))
     """
-    manager = ConfigManager.from_profile(profile)
+    # Load default config and save to specified path
+    manager = ConfigManager()
     manager.save(output_path)

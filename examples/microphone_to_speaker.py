@@ -8,6 +8,7 @@ Captures audio from microphone, translates it, and plays the result through spea
 import asyncio
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add src to path for direct execution
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -25,7 +26,7 @@ from utils.vad import EnergyVAD
 async def real_time_translation(
     source_lang: str = "zh",
     target_lang: str = "en",
-    profile: str = "fast",
+    config_path: Optional[Path] = None,
     use_vad: bool = False,
     vad_energy_threshold: float = 0.005,
     min_speech_duration_ms: float = 100,
@@ -38,7 +39,7 @@ async def real_time_translation(
     Args:
         source_lang: Source language code (default: zh - Chinese)
         target_lang: Target language code (default: en - English)
-        profile: Configuration profile to use (default: fast)
+        config_path: Path to configuration file (default: configs/default.yaml)
         use_vad: Use VAD for segmentation (default: False - use fixed chunks)
         vad_energy_threshold: VAD energy threshold for speech detection (default: 0.005)
         min_speech_duration_ms: Minimum speech duration in ms (default: 100)
@@ -49,7 +50,6 @@ async def real_time_translation(
     print("🌉 Sokuji-Bridge - Real-time Translation Demo")
     print("=" * 70)
     print(f"Translation: {source_lang} → {target_lang}")
-    print(f"Profile: {profile}")
     print()
 
     # 1. Initialize audio I/O devices
@@ -77,14 +77,14 @@ async def real_time_translation(
 
     # 2. Load configuration
     print("📋 Loading configuration...")
-    config_manager = ConfigManager.from_profile(profile)
+    config_manager = ConfigManager(config_path=config_path)
     config = config_manager.get_config()
 
     # Override language settings
     config.pipeline.source_language = source_lang
     config.pipeline.target_language = target_lang
 
-    print(f"✓ Profile: {config.pipeline.name}")
+    print(f"✓ Configuration: {config.pipeline.name}")
     print(f"  STT: {config.stt.provider}")
     print(f"  Translation: {config.translation.provider}")
     print(f"  TTS: {config.tts.provider}")
@@ -289,7 +289,7 @@ def main():
             real_time_translation(
                 source_lang="zh",
                 target_lang="en",
-                profile="fast",
+                config_path=None,  # Use default configs/default.yaml
                 use_vad=False,  # Disable VAD - use fixed chunks instead
                 chunk_duration_ms=2000,  # Process every 2 seconds automatically
             )

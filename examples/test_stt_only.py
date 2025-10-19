@@ -8,6 +8,7 @@ Use this to diagnose if the issue is in STT or elsewhere.
 import asyncio
 import sys
 from pathlib import Path
+from typing import Optional
 import time
 
 # Add src to path for direct execution
@@ -21,7 +22,7 @@ from utils.vad import EnergyVAD
 
 async def test_stt_only(
     source_lang: str = "zh",
-    profile: str = "fast",
+    config_path: Optional[Path] = None,
     use_vad: bool = True,
     vad_energy_threshold: float = 0.005,
     min_speech_duration_ms: float = 100,
@@ -33,7 +34,7 @@ async def test_stt_only(
 
     Args:
         source_lang: Source language code
-        profile: Configuration profile
+        config_path: Path to configuration file (default: configs/default.yaml)
         use_vad: Use VAD for segmentation (if False, use fixed-duration chunks)
         vad_energy_threshold: VAD energy threshold
         min_speech_duration_ms: Minimum speech duration
@@ -77,10 +78,10 @@ async def test_stt_only(
 
     # 3. Load configuration and initialize STT
     print("📋 Loading configuration...")
-    config_manager = ConfigManager.from_profile(profile)
+    config_manager = ConfigManager(config_path=config_path)
     config = config_manager.get_config()
     config.pipeline.source_language = source_lang
-    print(f"✓ Profile: {config.pipeline.name}")
+    print(f"✓ Configuration: {config.pipeline.name}")
     print(f"  STT Provider: {config.stt.provider}")
     print()
 

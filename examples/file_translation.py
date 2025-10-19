@@ -7,6 +7,7 @@ Demonstrates translating audio files and saving the translated output.
 import asyncio
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add src to path for direct execution
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -25,7 +26,7 @@ async def translate_audio_file(
     output_file: str,
     source_lang: str = "zh",
     target_lang: str = "en",
-    profile: str = "fast",
+    config_path: Optional[Path] = None,
     use_vad: bool = True,
     vad_energy_threshold: float = 0.01,
     min_speech_duration_ms: float = 250,
@@ -39,7 +40,7 @@ async def translate_audio_file(
         output_file: Output audio file path
         source_lang: Source language code
         target_lang: Target language code
-        profile: Configuration profile to use
+        config_path: Path to configuration file (default: configs/default.yaml)
         use_vad: Use VAD for intelligent segmentation (default: True)
         vad_energy_threshold: VAD energy threshold (default: 0.01)
         min_speech_duration_ms: Minimum speech duration in ms (default: 250)
@@ -51,7 +52,6 @@ async def translate_audio_file(
     print(f"Input file: {input_file}")
     print(f"Output file: {output_file}")
     print(f"Source → Target: {source_lang} → {target_lang}")
-    print(f"Profile: {profile}")
     print()
 
     # 1. Initialize audio file I/O
@@ -73,14 +73,14 @@ async def translate_audio_file(
 
     # 2. Load configuration
     print("📋 Loading configuration...")
-    config_manager = ConfigManager.from_profile(profile)
+    config_manager = ConfigManager(config_path=config_path)
     config = config_manager.get_config()
 
     # Override language settings
     config.pipeline.source_language = source_lang
     config.pipeline.target_language = target_lang
 
-    print(f"✓ Profile: {config.pipeline.name}")
+    print(f"✓ Configuration: {config.pipeline.name}")
     print(f"  STT: {config.stt.provider}")
     print(f"  Translation: {config.translation.provider}")
     print(f"  TTS: {config.tts.provider}")
@@ -224,7 +224,6 @@ async def batch_translate_files(
     output_dir: str,
     source_lang: str = "zh",
     target_lang: str = "en",
-    profile: str = "fast",
     use_vad: bool = True,
     vad_energy_threshold: float = 0.01,
     min_speech_duration_ms: float = 250,
@@ -265,7 +264,7 @@ async def batch_translate_files(
                 output_file=str(output_file),
                 source_lang=source_lang,
                 target_lang=target_lang,
-                profile=profile,
+                config_path=None,  # Use default configs/default.yaml
                 use_vad=use_vad,
                 vad_energy_threshold=vad_energy_threshold,
                 min_speech_duration_ms=min_speech_duration_ms,
@@ -310,13 +309,6 @@ def main():
         help="Target language code (default: en)",
     )
     parser.add_argument(
-        "--profile",
-        type=str,
-        default="fast",
-        choices=["fast", "hybrid", "quality", "cpu"],
-        help="Configuration profile (default: fast)",
-    )
-    parser.add_argument(
         "--no-vad",
         action="store_true",
         help="Disable VAD, use fixed-duration chunks (default: VAD enabled)",
@@ -352,7 +344,6 @@ def main():
                     output_dir=output_dir,
                     source_lang=args.source,
                     target_lang=args.target,
-                    profile=args.profile,
                     use_vad=not args.no_vad,
                     vad_energy_threshold=args.vad_threshold,
                     min_speech_duration_ms=args.min_speech_duration,
@@ -375,7 +366,7 @@ def main():
                     output_file=output_file,
                     source_lang=args.source,
                     target_lang=args.target,
-                    profile=args.profile,
+                    config_path=None,  # Use default configs/default.yaml
                     use_vad=not args.no_vad,
                     vad_energy_threshold=args.vad_threshold,
                     min_speech_duration_ms=args.min_speech_duration,

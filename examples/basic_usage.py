@@ -28,7 +28,7 @@ async def test_single_translation():
 
     # Load configuration
     print("📋 Loading configuration...")
-    config_manager = ConfigManager.from_profile("fast")
+    config_manager = ConfigManager()
     config = config_manager.get_config()
     print(f"✓ Loaded profile: {config.pipeline.name}")
     print(f"  Source: {config.pipeline.source_language}")
@@ -139,7 +139,7 @@ async def test_provider_individually():
 
     # Test STT
     print("1️⃣  Testing STT Provider...")
-    config_manager = ConfigManager.from_profile("fast")
+    config_manager = ConfigManager()
     config = config_manager.get_config()
 
     stt = FasterWhisperProvider(config.stt.config)
