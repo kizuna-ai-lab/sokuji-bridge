@@ -1,0 +1,182 @@
+# Sokuji-Bridge CosyVoice2 Configuration
+# Optimized for real-time translation with cross-lingual voice synthesis
+
+version: "0.1.0"
+
+# Pipeline Configuration
+pipeline:
+  name: "cosyvoice_translation"
+  mode: "streaming"
+  source_language: "auto"  # Auto-detect or specify: zh, en, ja, ko, etc.
+  target_language: "en"    # Target language for translation
+
+  # Audio Configuration
+  audio:
+    sample_rate: 16000  # CosyVoice requires 16kHz for prompts
+    chunk_duration_ms: 30
+    format: "int16"
+    channels: 1
+
+  # Segmentation Strategy
+  segmentation:
+    strategy: "hybrid"  # sentence, pause, or hybrid
+    max_segment_length: 1000
+    accumulate_until_punctuation: true
+
+# Speech-to-Text Configuration
+stt:
+  provider: "faster_whisper"
+  device: "cuda"
+
+  config:
+    model_size: "medium"
+    compute_type: "float16"
+    num_workers: 2
+    language: null  # Auto-detect
+    beam_size: 5
+    temperature: 0.0
+
+    # VAD Configuration
+    vad_filter: true
+    vad_threshold: 0.95
+    vad_neg_threshold: 0.35
+    vad_speech_pad_ms: 400
+    vad_min_speech_duration_ms: 250
+    vad_max_speech_duration_s: 30.0
+    vad_min_silence_duration_ms: 2000
+
+# Translation Configuration
+translation:
+  provider: "nllb_local"
+  device: "cuda"
+
+  config:
+    model: "facebook/nllb-200-distilled-1.3B"
+    precision: "float16"
+    max_length: 512
+    num_beams: 4
+
+  # Batch Processing
+  batching:
+    enabled: true
+    max_batch_size: 4
+    timeout_ms: 500
+
+  # Translation Cache
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+    max_entries: 10000
+
+# Text-to-Speech Configuration (CosyVoice2)
+tts:
+  provider: "cosyvoice"
+  device: "cuda"
+
+  config:
+    # Model Configuration
+    model: "CosyVoice2-0.5B"  # Recommended for best streaming performance
+    model_dir: "pretrained_models/CosyVoice2-0.5B"
+    auto_download: true
+    download_source: "modelscope"  # modelscope | huggingface
+
+    # Inference Mode (cross_lingual is optimal for translation)
+    inference_mode: "cross_lingual"
+
+    # Cross-lingual Configuration (CORE FOR TRANSLATION)
+    cross_lingual:
+      # Auto-extract prompt from source audio
+      auto_extract_prompt: true
+      # Use first N seconds of source audio as reference
+      prompt_duration_sec: 3.0
+      # Prompt audio will be provided at runtime from STT output
+      prompt_audio: null
+      # Sample rate for prompt (CosyVoice requires 16kHz)
+      prompt_sample_rate: 16000
+
+    # Zero-shot Configuration (Alternative mode)
+    zero_shot:
+      # For explicit voice cloning
+      prompt_text: null
+      prompt_audio: null
+      # Cache speaker embeddings for performance
+      speaker_embedding_cache: true
+
+    # SFT Configuration (Fallback mode with preset voices)
+    sft:
+      speaker: "default"
+
+    # Instruct Configuration (Advanced control)
+    instruct:
+      instruct_text: "Speak naturally with emotion"
+      sft_speaker: "default"
+      prompt_audio: null
+
+    # Streaming Configuration (Native CosyVoice2 Support)
+    streaming:
+      enabled: true  # Enable for <200ms latency
+      token_hop_len: 50  # Token chunk size for streaming
+      mel_cache_len: 10  # HiFT mel-spectrogram cache length
+      source_cache_len: 10  # HiFT source audio cache length
+
+    # Synthesis Parameters
+    speed: 1.0  # Speech speed (0.5 - 2.0)
+    text_frontend: true  # Enable text normalization
+
+# Translation Workflow Integration
+# ┌──────────────────────────────────────────────────────┐
+# │ STT (faster-whisper)                                 │
+# │   Input: Source audio (e.g., Chinese speech)         │
+# │   Output: Transcribed text + original audio          │
+# └──────────────┬───────────────────────────────────────┘
+#                │
+#                ▼
+# ┌──────────────────────────────────────────────────────┐
+# │ Translation (NLLB)                                   │
+# │   Input: Source text (Chinese)                       │
+# │   Output: Target text (English)                      │
+# └──────────────┬───────────────────────────────────────┘
+#                │
+#                ▼
+# ┌──────────────────────────────────────────────────────┐
+# │ TTS (CosyVoice2 Cross-lingual)                      │
+# │   Input:                                             │
+# │     - Target text (English)                          │
+# │     - Source audio (Chinese) as prompt_audio         │
+# │   Output: English speech with Chinese voice          │
+# │   Mode: cross_lingual                                │
+# └──────────────────────────────────────────────────────┘
+
+# Monitoring and Observability
+monitoring:
+  enabled: true
+  prometheus_port: 9090
+  log_level: "INFO"
+
+  # Latency Targets for Translation Workflow
+  latency_targets:
+    stt_ms: 500
+    translation_ms: 400
+    tts_ms: 200  # CosyVoice2 streaming target
+    total_ms: 2000  # End-to-end target
+
+# API Keys (loaded from environment variables)
+api_keys:
+  deepl: ${DEEPL_API_KEY}
+  openai: ${OPENAI_API_KEY}
+  elevenlabs: ${ELEVENLABS_API_KEY}
+
+# Model Cache Directory
+model_cache_dir: "~/.cache/sokuji-bridge/models"
+
+# Performance Notes:
+# - CosyVoice2-0.5B requires ~4GB VRAM
+# - Cross-lingual mode achieves <200ms latency with streaming
+# - Total pipeline latency: ~1.5-2.0s with local models
+# - For best quality: Use 3-10 seconds of clean source audio as prompt
+# - Supported source → target combinations:
+#   * zh → en (Chinese to English)
+#   * en → zh (English to Chinese)
+#   * ja → en (Japanese to English)
+#   * ko → en (Korean to English)
+#   * Any supported language pair with cross-lingual mode

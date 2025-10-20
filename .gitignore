@@ -124,3 +124,6 @@ celerybeat.pid
 
 # Ruff
 .ruff_cache/
+
+# Pretrained model directories
+pretrained_models/

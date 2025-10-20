@@ -67,6 +67,16 @@ translation = [
 tts = [
     "piper-tts>=1.2.0",
     "TTS>=0.22.0",  # Coqui TTS
+    # CosyVoice2 support
+    # NOTE: PyPI package (0.0.8) is a simplified wrapper
+    # For full features, install from GitHub:
+    #   pip install git+https://github.com/FunAudioLLM/CosyVoice.git
+    # See docs/cosyvoice_installation.md for details
+    "cosyvoice>=0.0.8",  # PyPI fallback - prefer GitHub installation
+    "modelscope>=1.11.0",  # For model downloads
+    "torchaudio>=2.0.0",
+    "onnxruntime-gpu==1.18.0; sys_platform == 'linux'",
+    "onnxruntime==1.18.0; sys_platform == 'darwin' or sys_platform == 'win32'",
 ]
 
 # Development dependencies

@@ -95,6 +95,21 @@ tts:
     reference_audio: null
     language: "en"
 
+  # Alternative: CosyVoice2 for Translation Scenarios
+  # Uncomment to enable cross-lingual voice synthesis
+  # provider: "cosyvoice"
+  # device: "cuda"
+  # config:
+  #   model: "CosyVoice2-0.5B"
+  #   inference_mode: "cross_lingual"  # Optimal for translation
+  #   cross_lingual:
+  #     auto_extract_prompt: true
+  #     prompt_duration_sec: 3.0
+  #   streaming:
+  #     enabled: true
+  #   speed: 1.0
+  # See configs/cosyvoice_translation.yaml for full configuration
+
 # Monitoring and Observability
 monitoring:
   enabled: true
