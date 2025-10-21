@@ -1,0 +1,6 @@
+# NLLB Local Provider Dependencies
+# Local translation with GPU acceleration
+
+transformers>=4.35.0
+torch>=2.5.0
+sentencepiece>=0.1.99

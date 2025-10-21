@@ -1,0 +1,5 @@
+# Kokoro TTS Provider Dependencies
+# Experimental local TTS
+
+# Kokoro TTS (if available on PyPI, otherwise manual installation)
+# torch>=2.5.0  # Uncomment if needed

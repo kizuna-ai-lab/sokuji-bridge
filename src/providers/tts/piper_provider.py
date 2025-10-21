@@ -14,7 +14,7 @@ import sys
 from typing import AsyncIterator, Optional, Dict, Any
 from pathlib import Path
 
-from providers.base import (
+from src.providers.base import (
     TTSProvider,
     SynthesisResult,
     ProviderStatus,
@@ -383,5 +383,5 @@ class PiperProvider(TTSProvider):
 
 
 # Register provider
-from providers.base import register_provider
+from src.providers.base import register_provider
 register_provider("tts", "piper", PiperProvider)

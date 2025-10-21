@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from providers.base import AudioChunk
-from utils.audio_io import AudioInput, AudioDevice, list_audio_devices
+from src.providers.base import AudioChunk
+from src.utils.audio_io import AudioInput, AudioDevice, list_audio_devices
 
 
 class MicrophoneInput(AudioInput):

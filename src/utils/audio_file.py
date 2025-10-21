@@ -12,8 +12,8 @@ import numpy as np
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from providers.base import AudioChunk, SynthesisResult
-from utils.audio_io import AudioInput, AudioOutput, AudioDevice
+from src.providers.base import AudioChunk, SynthesisResult
+from src.utils.audio_io import AudioInput, AudioOutput, AudioDevice
 
 
 class AudioFileReader(AudioInput):

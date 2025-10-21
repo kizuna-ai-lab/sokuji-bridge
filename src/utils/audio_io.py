@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from providers.base import AudioChunk, SynthesisResult
+from src.providers.base import AudioChunk, SynthesisResult
 
 
 @dataclass

@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from providers.base import SynthesisResult
-from utils.audio_io import AudioOutput, AudioDevice, list_audio_devices
+from src.providers.base import SynthesisResult
+from src.utils.audio_io import AudioOutput, AudioDevice, list_audio_devices
 
 
 class SpeakerOutput(AudioOutput):

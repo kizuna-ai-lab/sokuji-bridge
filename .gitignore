@@ -124,3 +124,9 @@ celerybeat.pid
 
 # Ruff
 .ruff_cache/
+
+# Pretrained models (large files, download separately)
+pretrained_models/
+
+# Docker volumes and caches
+.cache/sokuji-bridge/

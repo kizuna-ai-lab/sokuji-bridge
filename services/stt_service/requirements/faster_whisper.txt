@@ -1,0 +1,10 @@
+# Faster-Whisper Provider Dependencies
+# Local STT with GPU acceleration
+
+faster-whisper>=0.10.0
+openai-whisper>=20231117
+silero-vad>=4.0.0
+
+# ML frameworks
+torch>=2.5.0
+transformers>=4.35.0

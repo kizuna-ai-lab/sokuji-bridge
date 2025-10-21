@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package sokuji.tts;
+
+import "common.proto";
+
+// Text-to-Speech Service
+service TTSService {
+  // Synthesize speech from a single text
+  rpc Synthesize(SynthesizeRequest) returns (sokuji.common.SynthesisResult);
+
+  // Synthesize speech from text stream (streaming input, streaming output)
+  rpc SynthesizeStream(stream SynthesizeRequest) returns (stream sokuji.common.SynthesisResult);
+
+  // Get available voices
+  rpc GetVoices(sokuji.common.Empty) returns (VoiceListResponse);
+
+  // Get supported languages
+  rpc GetSupportedLanguages(sokuji.common.Empty) returns (LanguageListResponse);
+
+  // Health check
+  rpc HealthCheck(sokuji.common.Empty) returns (sokuji.common.HealthCheckResponse);
+
+  // Get metrics
+  rpc GetMetrics(sokuji.common.Empty) returns (sokuji.common.MetricsResponse);
+}
+
+// Request for speech synthesis
+message SynthesizeRequest {
+  string text = 1;                  // Text to synthesize
+  string voice_id = 2;              // Voice identifier
+  optional string language = 3;     // Optional language hint
+  optional float speed = 4;         // Speech speed multiplier (default: 1.0)
+  optional float pitch = 5;         // Pitch adjustment (provider-specific)
+  map<string, string> parameters = 6;  // Additional provider-specific parameters
+}
+
+// Voice information
+message Voice {
+  string id = 1;                    // Voice identifier
+  string name = 2;                  // Human-readable voice name
+  string language = 3;              // Primary language code
+  repeated string supported_languages = 4;  // All supported languages
+  string gender = 5;                // Voice gender (male, female, neutral)
+  map<string, string> metadata = 6; // Additional voice metadata
+}
+
+// Response with available voices
+message VoiceListResponse {
+  repeated Voice voices = 1;        // List of available voices
+}
+
+// Supported languages response
+message LanguageListResponse {
+  repeated string language_codes = 1;   // List of supported language codes
+  bool supports_streaming = 2;          // Whether provider supports streaming synthesis
+  bool supports_voice_cloning = 3;      // Whether provider supports voice cloning
+}

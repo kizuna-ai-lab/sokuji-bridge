@@ -1,0 +1,4 @@
+# ElevenLabs API Provider Dependencies
+# Cloud-based high-quality TTS
+
+elevenlabs>=0.2.0

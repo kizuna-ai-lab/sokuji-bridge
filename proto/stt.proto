@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package sokuji.stt;
+
+import "common.proto";
+
+// Speech-to-Text Service
+service STTService {
+  // Transcribe a single audio chunk
+  rpc Transcribe(TranscribeRequest) returns (sokuji.common.TranscriptionResult);
+
+  // Transcribe audio stream (streaming input, streaming output)
+  rpc TranscribeStream(stream sokuji.common.AudioChunk) returns (stream sokuji.common.TranscriptionResult);
+
+  // Get supported languages
+  rpc GetSupportedLanguages(sokuji.common.Empty) returns (LanguageListResponse);
+
+  // Health check
+  rpc HealthCheck(sokuji.common.Empty) returns (sokuji.common.HealthCheckResponse);
+
+  // Get metrics
+  rpc GetMetrics(sokuji.common.Empty) returns (sokuji.common.MetricsResponse);
+}
+
+// Request for single audio transcription
+message TranscribeRequest {
+  sokuji.common.AudioChunk audio = 1;  // Audio chunk to transcribe
+  optional string language = 2;         // Optional language hint (e.g., "zh", "en", "ja")
+}
+
+// Supported languages response
+message LanguageListResponse {
+  repeated string language_codes = 1;   // List of supported language codes
+}

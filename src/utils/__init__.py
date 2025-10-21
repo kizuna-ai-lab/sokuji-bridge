@@ -9,7 +9,7 @@ Provides audio input/output abstractions and implementations for:
 """
 
 # Core audio I/O abstractions
-from utils.audio_io import (
+from src.utils.audio_io import (
     AudioInput,
     AudioOutput,
     AudioDevice,
@@ -22,13 +22,13 @@ from utils.audio_io import (
 # from utils.microphone import MicrophoneInput  # Temporarily disabled
 
 # Speaker output
-from utils.speaker import SpeakerOutput
+from src.utils.speaker import SpeakerOutput
 
 # Audio file I/O
-from utils.audio_file import AudioFileReader, AudioFileWriter
+from src.utils.audio_file import AudioFileReader, AudioFileWriter
 
 # Voice Activity Detection
-from utils.vad import (
+from src.utils.vad import (
     VADProvider,
     VADResult,
     SpeechState,

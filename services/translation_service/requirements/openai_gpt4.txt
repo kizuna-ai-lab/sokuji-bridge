@@ -1,0 +1,4 @@
+# OpenAI GPT-4 Translation Provider Dependencies
+# Cloud-based translation with GPT-4
+
+openai>=1.0.0

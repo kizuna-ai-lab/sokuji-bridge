@@ -30,7 +30,7 @@ git clone https://github.com/yourusername/sokuji-bridge.git
 cd sokuji-bridge
 
 # Option 1: Docker (Recommended)
-docker-compose up -d
+docker compose up -d
 
 # Option 2: Local installation
 pip install -e ".[all]"

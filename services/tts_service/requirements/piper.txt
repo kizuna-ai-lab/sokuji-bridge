@@ -1,0 +1,4 @@
+# Piper TTS Provider Dependencies
+# Fast, local TTS optimized for CPU
+
+piper-tts>=1.2.0

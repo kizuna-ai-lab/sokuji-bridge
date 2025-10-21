@@ -10,7 +10,7 @@ import torch
 from typing import AsyncIterator, Optional, Dict, Any
 from collections import defaultdict
 
-from providers.base import (
+from src.providers.base import (
     TranslationProvider,
     TranslationResult,
     ProviderStatus,
@@ -417,5 +417,5 @@ class NLLBProvider(TranslationProvider):
 
 
 # Register provider
-from providers.base import register_provider
+from src.providers.base import register_provider
 register_provider("translation", "nllb_local", NLLBProvider)

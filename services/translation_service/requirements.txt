@@ -1,0 +1,27 @@
+# Translation Service Dependencies
+# Only includes translation-specific libraries - no STT or TTS dependencies
+
+# Core
+numpy>=1.24.0
+pydantic>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# gRPC
+grpcio>=1.59.0
+grpcio-tools>=1.59.0
+protobuf>=4.24.0
+
+# Logging
+loguru>=0.7.2
+
+# Translation Providers
+transformers>=4.35.0
+torch>=2.5.0
+sentencepiece>=0.1.99
+deepl>=1.17.0
+googletrans>=4.0.0
+
+# Optional: For API-based providers
+# openai>=1.0.0  # For GPT-4 translation
+# anthropic>=0.8.0  # For Claude translation

@@ -1,0 +1,28 @@
+# STT Service Dependencies
+# Only includes STT-specific libraries - no translation or TTS dependencies
+
+# Core
+numpy>=1.24.0
+pydantic>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# gRPC
+grpcio>=1.59.0
+grpcio-tools>=1.59.0
+protobuf>=4.24.0
+
+# Logging
+loguru>=0.7.2
+
+# STT Providers
+faster-whisper>=0.10.0
+openai-whisper>=20231117
+silero-vad>=4.0.0
+
+# Audio processing
+soundfile>=0.12.1
+
+# ML frameworks (for STT only)
+torch>=2.5.0
+transformers>=4.35.0

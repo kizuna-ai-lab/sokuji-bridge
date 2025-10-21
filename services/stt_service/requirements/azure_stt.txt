@@ -1,0 +1,4 @@
+# Azure Speech-to-Text Provider Dependencies
+# Cloud-based STT with Azure Cognitive Services
+
+azure-cognitiveservices-speech>=1.31.0

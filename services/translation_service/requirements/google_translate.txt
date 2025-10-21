@@ -1,0 +1,4 @@
+# Google Translate API Provider Dependencies
+# Cloud-based translation
+
+googletrans>=4.0.0

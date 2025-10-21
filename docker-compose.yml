@@ -1,0 +1,129 @@
+services:
+  # STT Service - Speech-to-Text
+  stt-service:
+    build:
+      context: .
+      dockerfile: services/stt_service/Dockerfile
+      args:
+        PROVIDER: ${STT_PROVIDER:-faster_whisper}
+    container_name: sokuji-stt
+    environment:
+      - STT_PROVIDER=${STT_PROVIDER:-faster_whisper}
+      - MODEL_SIZE=medium
+      - DEVICE=cuda
+      - COMPUTE_TYPE=float16
+      - VAD_FILTER=true
+      - LOG_LEVEL=INFO
+      - PORT=50051
+    volumes:
+      - model-cache:/root/.cache
+    networks:
+      - sokuji-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; channel = grpc.insecure_channel('localhost:50051'); channel.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Translation Service
+  translation-service:
+    build:
+      context: .
+      dockerfile: services/translation_service/Dockerfile
+      args:
+        PROVIDER: ${TRANSLATION_PROVIDER:-nllb_local}
+    container_name: sokuji-translation
+    environment:
+      - TRANSLATION_PROVIDER=${TRANSLATION_PROVIDER:-nllb_local}
+      - MODEL=facebook/nllb-200-distilled-1.3B
+      - DEVICE=cuda
+      - PRECISION=float16
+      - LOG_LEVEL=INFO
+      - PORT=50052
+    volumes:
+      - model-cache:/root/.cache
+    networks:
+      - sokuji-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; channel = grpc.insecure_channel('localhost:50052'); channel.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TTS Service - Text-to-Speech
+  tts-service:
+    build:
+      context: .
+      dockerfile: services/tts_service/Dockerfile
+      args:
+        PROVIDER: ${TTS_PROVIDER:-piper}
+    container_name: sokuji-tts
+    environment:
+      - TTS_PROVIDER=${TTS_PROVIDER:-piper}
+      - MODEL=en_US-lessac-medium
+      - DEVICE=cpu
+      - LOG_LEVEL=INFO
+      - PORT=50053
+    volumes:
+      - model-cache:/root/.cache
+    networks:
+      - sokuji-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; channel = grpc.insecure_channel('localhost:50053'); channel.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Gateway Service - API Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: sokuji-gateway
+    ports:
+      - "8000:8000"  # REST/WebSocket API
+    environment:
+      - STT_SERVICE_URL=stt-service:50051
+      - TRANSLATION_SERVICE_URL=translation-service:50052
+      - TTS_SERVICE_URL=tts-service:50053
+      - LOG_LEVEL=INFO
+      - PORT=8000
+    networks:
+      - sokuji-network
+    depends_on:
+      - stt-service
+      - translation-service
+      - tts-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Shared volumes
+volumes:
+  model-cache:
+    driver: local
+
+# Network for service communication
+networks:
+  sokuji-network:
+    driver: bridge

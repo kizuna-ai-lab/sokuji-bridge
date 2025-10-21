@@ -1,0 +1,4 @@
+# OpenAI Whisper API Provider Dependencies
+# Lightweight, cloud-based STT
+
+openai>=1.0.0

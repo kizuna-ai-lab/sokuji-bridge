@@ -10,7 +10,7 @@ import time
 from typing import AsyncIterator, Optional, Dict, Any
 from pathlib import Path
 
-from providers.base import (
+from src.providers.base import (
     STTProvider,
     AudioChunk,
     TranscriptionResult,
@@ -359,5 +359,5 @@ class FasterWhisperProvider(STTProvider):
 
 
 # Register provider
-from providers.base import register_provider
+from src.providers.base import register_provider
 register_provider("stt", "faster_whisper", FasterWhisperProvider)

@@ -1,0 +1,4 @@
+# DeepL API Provider Dependencies
+# Cloud-based translation
+
+deepl>=1.17.0

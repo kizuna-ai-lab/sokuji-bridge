@@ -1,0 +1,36 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  stt-service:
+    environment:
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./src:/app/src:ro
+      - ./services/stt_service:/app/services/stt_service:ro
+
+  translation-service:
+    environment:
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./src:/app/src:ro
+      - ./services/translation_service:/app/services/translation_service:ro
+
+  tts-service:
+    environment:
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./src:/app/src:ro
+      - ./services/tts_service:/app/services/tts_service:ro
+
+  gateway:
+    environment:
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./src/generated:/app/src/generated:ro
+      - ./services/gateway:/app/services/gateway:ro
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Python debugger port

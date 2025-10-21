@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package sokuji.translation;
+
+import "common.proto";
+
+// Translation Service
+service TranslationService {
+  // Translate a single text
+  rpc Translate(TranslateRequest) returns (sokuji.common.TranslationResult);
+
+  // Translate multiple texts in batch
+  rpc TranslateBatch(TranslateBatchRequest) returns (TranslateBatchResponse);
+
+  // Translate text stream (streaming input, streaming output)
+  rpc TranslateStream(stream TranslateRequest) returns (stream sokuji.common.TranslationResult);
+
+  // Get supported languages
+  rpc GetSupportedLanguages(sokuji.common.Empty) returns (LanguageListResponse);
+
+  // Health check
+  rpc HealthCheck(sokuji.common.Empty) returns (sokuji.common.HealthCheckResponse);
+
+  // Get metrics
+  rpc GetMetrics(sokuji.common.Empty) returns (sokuji.common.MetricsResponse);
+}
+
+// Request for single translation
+message TranslateRequest {
+  string text = 1;                  // Text to translate
+  string source_language = 2;       // Source language code (e.g., "zh", "en")
+  string target_language = 3;       // Target language code (e.g., "en", "ja")
+  optional string context = 4;      // Optional context for better translation
+}
+
+// Request for batch translation
+message TranslateBatchRequest {
+  repeated string texts = 1;        // List of texts to translate
+  string source_language = 2;       // Source language code
+  string target_language = 3;       // Target language code
+}
+
+// Response for batch translation
+message TranslateBatchResponse {
+  repeated sokuji.common.TranslationResult results = 1;  // List of translation results
+}
+
+// Supported languages response
+message LanguageListResponse {
+  repeated string language_codes = 1;   // List of supported language codes
+  bool supports_batch = 2;              // Whether provider supports batch translation
+  bool supports_streaming = 3;          // Whether provider supports streaming translation
+}

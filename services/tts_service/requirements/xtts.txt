@@ -1,0 +1,5 @@
+# XTTS v2 Provider Dependencies
+# High-quality local TTS with GPU acceleration
+
+TTS>=0.22.0
+torch>=2.5.0

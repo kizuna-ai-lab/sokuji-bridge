@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package sokuji.common;
+
+// Common message types shared across all services
+
+// Audio data chunk with metadata
+message AudioChunk {
+  bytes data = 1;               // Raw audio data
+  int32 sample_rate = 2;        // Sample rate in Hz (e.g., 16000)
+  double timestamp = 3;         // Unix timestamp
+  int32 channels = 4;           // Number of audio channels (default: 1)
+  string format = 5;            // Audio format (e.g., "int16", "float32")
+}
+
+// Speech-to-text transcription result
+message TranscriptionResult {
+  string text = 1;              // Transcribed text
+  string language = 2;          // Detected/specified language code (e.g., "zh", "en")
+  float confidence = 3;         // Confidence score (0.0-1.0)
+  double timestamp = 4;         // Unix timestamp when transcription completed
+  optional double start_time = 5;   // Start time of speech segment
+  optional double end_time = 6;     // End time of speech segment
+  bool is_final = 7;            // Whether this is a final result (default: true)
+}
+
+// Translation result with metadata
+message TranslationResult {
+  string original_text = 1;         // Original input text
+  string translated_text = 2;       // Translated output text
+  string source_language = 3;       // Source language code
+  string target_language = 4;       // Target language code
+  float confidence = 5;             // Translation confidence (0.0-1.0)
+  double timestamp = 6;             // Unix timestamp when translation completed
+  optional string model_name = 7;   // Model used for translation
+}
+
+// Text-to-speech synthesis result
+message SynthesisResult {
+  bytes audio_data = 1;         // Synthesized audio data
+  int32 sample_rate = 2;        // Audio sample rate in Hz
+  string text = 3;              // Input text that was synthesized
+  string voice_id = 4;          // Voice identifier used
+  double timestamp = 5;         // Unix timestamp when synthesis completed
+  double duration_ms = 6;       // Duration of synthesized audio in milliseconds
+  string format = 7;            // Audio format (e.g., "int16", "float32")
+}
+
+// Health check response
+message HealthCheckResponse {
+  bool healthy = 1;             // Overall health status
+  string status = 2;            // Status description (e.g., "ready", "initializing", "error")
+  string provider_name = 3;     // Active provider name
+  map<string, string> details = 4;  // Additional health details
+}
+
+// Metrics response
+message MetricsResponse {
+  int64 total_requests = 1;     // Total number of requests processed
+  int64 total_errors = 2;       // Total number of errors encountered
+  double avg_duration_ms = 3;   // Average processing duration in milliseconds
+  double total_duration_ms = 4; // Total processing time in milliseconds
+  map<string, string> additional = 5;  // Additional provider-specific metrics
+}
+
+// Empty request message for health checks and similar operations
+message Empty {}

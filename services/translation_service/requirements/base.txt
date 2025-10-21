@@ -1,0 +1,16 @@
+# Base dependencies for Translation Service
+# Shared across all Translation providers
+
+# Core
+numpy>=1.24.0
+pydantic>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# gRPC
+grpcio>=1.59.0
+grpcio-tools>=1.59.0
+protobuf>=4.24.0
+
+# Logging
+loguru>=0.7.2

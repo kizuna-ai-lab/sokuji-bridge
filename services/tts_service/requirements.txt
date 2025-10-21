@@ -1,0 +1,29 @@
+# TTS Service Dependencies
+# Only includes TTS-specific libraries - no STT or translation dependencies
+
+# Core
+numpy>=1.24.0
+pydantic>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# gRPC
+grpcio>=1.59.0
+grpcio-tools>=1.59.0
+protobuf>=4.24.0
+
+# Logging
+loguru>=0.7.2
+
+# TTS Providers
+piper-tts>=1.2.0
+TTS>=0.22.0  # Coqui TTS for XTTS
+
+# Audio processing
+soundfile>=0.12.1
+
+# ML frameworks (optional, for XTTS)
+# torch>=2.5.0  # Uncomment if using XTTS
+
+# Optional: For API-based TTS providers
+# elevenlabs>=0.2.0  # For ElevenLabs TTS
