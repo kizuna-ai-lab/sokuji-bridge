@@ -2,8 +2,6 @@
 
 **Real-time Voice Translation System** with modular STT, Translation, and TTS pipelines.
 
-[中文文档](./docs/README_zh.md)
-
 ## 🌟 Features
 
 - **Modular Architecture**: Swap any STT, Translation, or TTS provider easily
@@ -17,160 +15,281 @@
 
 ### Prerequisites
 
-- Python 3.10+
-- Docker & Docker Compose
-- NVIDIA GPU with 12GB+ VRAM (for local providers)
-- CUDA 12.1+ or 13.0 (for GPU acceleration)
+- Docker & Docker Compose (v2.0+)
+- NVIDIA GPU with 8GB+ VRAM (for local providers)
+- NVIDIA Container Toolkit (for GPU acceleration)
+- CUDA 12.1+ (installed in containers)
 
-### Installation
+### Installation & Deployment
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/sokuji-bridge.git
 cd sokuji-bridge
 
-# Option 1: Docker (Recommended)
+# Start all microservices with Docker Compose
 docker compose up -d
 
-# Option 2: Local installation
-pip install -e ".[all]"
-python scripts/download_models.sh
+# Check service health
+curl http://localhost:8000/health
 ```
 
-### Usage
+### API Usage
 
 ```bash
-# Start translation (microphone input)
-sokuji translate --source zh --target en
+# Translate text (REST API)
+curl -X POST http://localhost:8000/translate/text \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "你好世界",
+    "source_language": "zh",
+    "target_language": "en",
+    "voice_id": "default"
+  }'
 
-# Translate audio file
-sokuji translate --source zh --target en --input audio.mp3 --output translated.wav
+# WebSocket real-time translation
+# Connect to ws://localhost:8000/ws/translate
+# See examples/ for client implementations
+```
 
-# Start as API server
-sokuji serve --host 0.0.0.0 --port 8000
+### Service Management
+
+```bash
+# View service logs
+docker compose logs -f gateway
+docker compose logs -f stt-service
+
+# Restart specific service
+docker compose restart stt-service
+
+# Stop all services
+docker compose down
+
+# Rebuild after code changes
+docker compose build stt-service
+docker compose up -d stt-service
 ```
 
 ## ⚙️ Configuration
 
-Sokuji-Bridge uses a YAML-based configuration system. The default configuration (`configs/default.yaml`) is optimized for low latency with local models:
+Sokuji-Bridge uses environment variables for service configuration. Edit `.env` or `docker-compose.yml`:
 
 ```yaml
-stt:
-  provider: faster_whisper
-  config:
-    model_size: medium
-    device: cuda
-    vad_filter: true  # Built-in VAD filtering
+# STT Service Configuration
+STT_PROVIDER: faster_whisper
+MODEL_SIZE: medium          # tiny, base, small, medium, large, large-v3
+DEVICE: cuda                # cuda or cpu
+COMPUTE_TYPE: float16       # float16, int8, float32
+VAD_FILTER: true           # Enable VAD filtering
 
-translation:
-  provider: nllb_local
-  config:
-    model: facebook/nllb-200-distilled-1.3B
-    device: cuda
+# Translation Service Configuration
+TRANSLATION_PROVIDER: nllb_local
+TRANSLATION_MODEL: facebook/nllb-200-distilled-1.3B
+PRECISION: float16
 
-tts:
-  provider: piper
-  config:
-    model: en_US-lessac-medium
+# TTS Service Configuration
+TTS_PROVIDER: piper
+TTS_MODEL: en_US-lessac-medium
 ```
 
-**Performance:** 1.5-2s latency | $0/month | ~5GB VRAM
+**Default Performance:** 1.5-2s latency | $0/month | ~6GB VRAM
 
 ### Customization
 
-Edit `configs/default.yaml` to customize providers, models, or parameters:
+Modify `docker-compose.yml` environment variables:
 
 ```bash
 # Use larger STT model for better accuracy
-stt:
-  config:
-    model_size: large-v3  # medium → large-v3
+services:
+  stt-service:
+    environment:
+      - MODEL_SIZE=large-v3  # Better accuracy, higher latency
 
-# Use cloud translation for better quality
-translation:
-  provider: deepl_api  # nllb_local → deepl_api
+# Use CPU-only mode (no GPU required)
+services:
+  stt-service:
+    environment:
+      - DEVICE=cpu
+      - COMPUTE_TYPE=int8
+    deploy:
+      resources: {}  # Remove GPU requirement
 ```
 
-See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
+See service-specific READMEs in `services/` for advanced configuration.
 
 ## 🏗️ Architecture
 
+### Microservices Design
+
+Sokuji-Bridge uses a **microservices architecture** with gRPC for inter-service communication:
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Audio Input Stream                     │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│            VAD + Intelligent Segmentation                │
-│            (Silero VAD / WebRTC VAD)                     │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                  STT Service (gRPC)                      │
-│         faster-whisper | Whisper API | Azure             │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│              Translation Service (gRPC)                  │
-│            NLLB | DeepL API | GPT-4 | Google             │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                   TTS Service (gRPC)                     │
-│          Piper | Kokoro | XTTS | ElevenLabs              │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Audio Output Stream                     │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    Client Applications                        │
+│              (REST API / WebSocket / gRPC)                    │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                   Gateway Service (FastAPI)                   │
+│         • REST/WebSocket API                                  │
+│         • Request routing & orchestration                     │
+│         • Health monitoring                                   │
+│         Port: 8000                                            │
+└─────┬──────────────────┬──────────────────┬──────────────────┘
+      │                  │                  │
+      │ gRPC             │ gRPC             │ gRPC
+      ▼                  ▼                  ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ STT Service  │  │ Translation  │  │ TTS Service  │
+│              │  │   Service    │  │              │
+│ Port: 50051  │  │ Port: 50052  │  │ Port: 50053  │
+├──────────────┤  ├──────────────┤  ├──────────────┤
+│ Providers:   │  │ Providers:   │  │ Providers:   │
+│ • faster-    │  │ • NLLB       │  │ • Piper      │
+│   whisper    │  │ • DeepL API  │  │ • Kokoro     │
+│ • Whisper    │  │ • GPT-4      │  │ • XTTS       │
+│   API        │  │ • Google     │  │ • ElevenLabs │
+│ • Azure      │  │              │  │              │
+├──────────────┤  ├──────────────┤  ├──────────────┤
+│ Features:    │  │ Features:    │  │ Features:    │
+│ • VAD filter │  │ • Batch      │  │ • Voice      │
+│ • Streaming  │  │ • Streaming  │  │   selection  │
+│ • Multi-lang │  │ • Context    │  │ • Streaming  │
+└──────────────┘  └──────────────┘  └──────────────┘
+```
+
+### Key Benefits
+
+- **Scalability**: Scale services independently based on load
+- **Resilience**: Service failures don't crash entire system
+- **Flexibility**: Swap providers without affecting other services
+- **Development**: Teams can develop services independently
+- **Deployment**: Deploy updates to individual services
+
+## 🌐 API Endpoints
+
+### Gateway Service (Port 8000)
+
+```bash
+# Health check (all services)
+GET /health
+Response: {"status": "healthy", "services": {...}}
+
+# Translate text end-to-end
+POST /translate/text
+Body: {
+  "text": "Hello world",
+  "source_language": "en",
+  "target_language": "zh",
+  "voice_id": "default"
+}
+
+# WebSocket real-time translation
+WS /ws/translate
+Config: {"source_language": "zh", "target_language": "en", "voice_id": "default"}
+
+# Get supported languages
+GET /services/stt/languages
+GET /services/translation/languages
+GET /services/tts/voices
+```
+
+### gRPC Services (Internal)
+
+```protobuf
+// STT Service (Port 50051)
+service STTService {
+  rpc Transcribe(TranscribeRequest) returns (TranscriptionResult);
+  rpc TranscribeStream(stream AudioChunk) returns (stream TranscriptionResult);
+  rpc HealthCheck(Empty) returns (HealthCheckResponse);
+}
+
+// Translation Service (Port 50052)
+service TranslationService {
+  rpc Translate(TranslateRequest) returns (TranslationResult);
+  rpc TranslateBatch(TranslateBatchRequest) returns (TranslateBatchResponse);
+  rpc HealthCheck(Empty) returns (HealthCheckResponse);
+}
+
+// TTS Service (Port 50053)
+service TTSService {
+  rpc Synthesize(SynthesizeRequest) returns (SynthesisResult);
+  rpc SynthesizeStream(stream SynthesizeRequest) returns (stream SynthesisResult);
+  rpc HealthCheck(Empty) returns (HealthCheckResponse);
+}
 ```
 
 ## 📖 Documentation
 
 - [Installation Guide](./docs/installation.md)
-- [Configuration](./docs/configuration.md)
-- [Provider Guide](./docs/providers.md)
+- [Microservices Architecture](./docs/architecture.md)
 - [API Reference](./docs/api.md)
+- [Provider Guide](./docs/providers.md)
 - [Performance Tuning](./docs/performance.md)
-- [Docker Deployment](./docs/docker.md)
+- [Development Guide](./docs/development.md)
 
 ## 🔧 Development
 
+### Local Development Setup
+
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
+# Run services in development mode
+docker compose -f docker-compose.dev.yml up
+
+# Run individual service locally
+cd services/stt_service
+pip install -r requirements/faster_whisper.txt
+python server.py
 
 # Run tests
-pytest
+pytest tests/
 
 # Code formatting
-black src tests
-ruff check src tests
+black src/ services/ tests/
+ruff check src/ services/ tests/
 
 # Type checking
-mypy src
+mypy src/
 ```
+
+### Adding New Providers
+
+1. Create provider class in `src/providers/{stt|translation|tts}/`
+2. Implement required abstract methods from base provider
+3. Register provider in `src/providers/__init__.py`
+4. Add provider requirements to service `requirements/`
+5. Update service Dockerfile with new provider target
+6. Test with `pytest tests/providers/`
+
+See [Development Guide](./docs/development.md) for details.
 
 ## 📝 Project Structure
 
 ```
 sokuji-bridge/
 ├── src/
-│   ├── core/              # Pipeline orchestrator
-│   ├── services/          # gRPC microservices
-│   ├── providers/         # STT/Translation/TTS providers
-│   ├── utils/             # VAD, audio processing, monitoring
-│   └── api/               # FastAPI + WebSocket
-├── configs/               # Configuration files
-├── proto/                 # gRPC protocol definitions
-├── docker/                # Docker images
-├── scripts/               # Deployment and utility scripts
-└── tests/                 # Unit, integration, E2E tests
+│   ├── generated/         # Generated gRPC code from proto/
+│   ├── providers/         # Provider implementations
+│   │   ├── stt/          # Speech-to-Text providers
+│   │   ├── translation/  # Translation providers
+│   │   └── tts/          # Text-to-Speech providers
+│   ├── utils/            # Shared utilities
+│   └── config/           # Configuration management
+├── services/
+│   ├── gateway/          # API Gateway (FastAPI + WebSocket)
+│   ├── stt_service/      # STT microservice (gRPC server)
+│   ├── translation_service/  # Translation microservice
+│   └── tts_service/      # TTS microservice
+├── proto/                # Protocol Buffer definitions
+├── examples/             # Usage examples
+├── tests/                # Test suites
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── docker-compose.yml    # Production deployment
+├── docker-compose.dev.yml # Development environment
+└── scripts/              # Utility scripts
 ```
 
 ## 🤝 Contributing
