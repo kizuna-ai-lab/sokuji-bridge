@@ -222,12 +222,25 @@ service TTSService {
 
 ## 📖 Documentation
 
-- [Installation Guide](./docs/installation.md)
-- [Microservices Architecture](./docs/architecture.md)
-- [API Reference](./docs/api.md)
-- [Provider Guide](./docs/providers.md)
-- [Performance Tuning](./docs/performance.md)
-- [Development Guide](./docs/development.md)
+### Getting Started
+- [Installation Guide](./docs/installation.md) - Complete installation instructions
+- [Quick Start (Microservices)](./docs/quickstart.md) - Get running with Docker in 5 minutes
+- [Quick Start (Monolithic)](./docs/quickstart-monolithic.md) - Legacy single-process setup
+
+### Architecture & API
+- [Architecture Documentation](./docs/architecture.md) - Microservices architecture details
+- [API Reference](./docs/api.md) - Complete REST/WebSocket/gRPC API documentation
+- [Provider Guide](./docs/providers.md) - STT, Translation, and TTS provider configuration
+
+### Advanced Topics
+- [Performance Tuning](./docs/performance.md) - Optimization strategies and benchmarks
+- [Development Guide](./docs/development.md) - Project status and contribution guidelines
+- [Audio I/O System](./docs/audio_io.md) - Audio input/output implementation details
+
+### Troubleshooting
+- [Microservices Guide](./docs/MICROSERVICES.md) - Detailed microservices documentation
+- [VAD Configuration](./docs/VAD_CONFIGURATION.md) - Voice Activity Detection setup
+- [Debug Mode](./docs/DEBUG_MODE.md) - Debugging tools and techniques
 
 ## 🔧 Development
 

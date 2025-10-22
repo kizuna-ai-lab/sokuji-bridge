@@ -27,7 +27,7 @@ cp .env.example .env
 # Edit .env to select providers (defaults: faster_whisper, nllb_local, piper)
 ```
 
-See [Provider Reference](docs/PROVIDERS.md) for all available providers.
+See [Provider Reference](./providers.md) for all available providers.
 
 ### 3. Generate gRPC Code
 
