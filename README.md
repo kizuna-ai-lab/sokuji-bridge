@@ -37,8 +37,8 @@ curl http://localhost:8000/health
 ### API Usage
 
 ```bash
-# Translate text (REST API)
-curl -X POST http://localhost:8000/translate/text \
+# Translate text (REST API - Pipeline)
+curl -X POST http://localhost:8000/api/v1/pipeline/translate-text \
   -H "Content-Type: application/json" \
   -d '{
     "text": "你好世界",
@@ -47,8 +47,21 @@ curl -X POST http://localhost:8000/translate/text \
     "voice_id": "default"
   }'
 
+# Translate audio file (REST API - Pipeline)
+curl -X POST http://localhost:8000/api/v1/pipeline/translate-audio \
+  -F "audio_file=@speech.wav" \
+  -F "source_language=zh" \
+  -F "target_language=en" \
+  -F "return_format=audio" \
+  -o translated.wav
+
+# Use individual services
+curl -X POST http://localhost:8000/api/v1/translation/translate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello", "source_language": "en", "target_language": "zh"}'
+
 # WebSocket real-time translation
-# Connect to ws://localhost:8000/ws/translate
+# Connect to ws://localhost:8000/api/v1/ws/translate
 # See examples/ for client implementations
 ```
 
@@ -176,23 +189,27 @@ Sokuji-Bridge uses a **microservices architecture** with gRPC for inter-service 
 GET /health
 Response: {"status": "healthy", "services": {...}}
 
-# Translate text end-to-end
-POST /translate/text
-Body: {
-  "text": "Hello world",
-  "source_language": "en",
-  "target_language": "zh",
-  "voice_id": "default"
-}
+# API information
+GET /api/v1/info
+Response: Complete API documentation
+
+# Independent services
+POST /api/v1/stt/transcribe         # Speech-to-text only
+POST /api/v1/translation/translate  # Text translation only
+POST /api/v1/tts/synthesize         # Text-to-speech only
+
+# Pipeline services (end-to-end)
+POST /api/v1/pipeline/translate-text   # Translation → TTS
+POST /api/v1/pipeline/translate-audio  # STT → Translation → TTS
 
 # WebSocket real-time translation
-WS /ws/translate
+WS /api/v1/ws/translate
 Config: {"source_language": "zh", "target_language": "en", "voice_id": "default"}
 
-# Get supported languages
-GET /services/stt/languages
-GET /services/translation/languages
-GET /services/tts/voices
+# Get supported languages and voices
+GET /api/v1/stt/languages
+GET /api/v1/translation/languages
+GET /api/v1/tts/voices
 ```
 
 ### gRPC Services (Internal)
@@ -229,7 +246,8 @@ service TTSService {
 
 ### Architecture & API
 - [Architecture Documentation](./docs/architecture.md) - Microservices architecture details
-- [API Reference](./docs/api.md) - Complete REST/WebSocket/gRPC API documentation
+- [Gateway API Reference](./docs/gateway-api.md) - Gateway REST/WebSocket API quick reference
+- [Complete API Reference](./docs/api.md) - Full REST/WebSocket/gRPC API documentation
 - [Provider Guide](./docs/providers.md) - STT, Translation, and TTS provider configuration
 
 ### Advanced Topics

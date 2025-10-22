@@ -1,4 +1,4 @@
-# API Reference
+# API Reference (v1.0)
 
 Complete API reference for Sokuji-Bridge microservices architecture.
 
@@ -11,6 +11,13 @@ Sokuji-Bridge provides two API interfaces:
 ## Gateway Service API (Port 8000)
 
 The Gateway service orchestrates all microservices and provides a unified API for clients.
+
+**API Structure:**
+- `/api/v1/stt/*` - STT service endpoints
+- `/api/v1/translation/*` - Translation service endpoints
+- `/api/v1/tts/*` - TTS service endpoints
+- `/api/v1/pipeline/*` - Multi-service pipeline endpoints
+- `/api/v1/ws/*` - WebSocket endpoints
 
 ### REST Endpoints
 
@@ -31,10 +38,190 @@ GET /health
 }
 ```
 
+#### API Information
+```http
+GET /api/v1/info
+```
+
+**Response:** Complete API documentation with all endpoints
+
+---
+
+## Independent Service Endpoints
+
+### STT Service
+
+#### Transcribe Audio
+```http
+POST /api/v1/stt/transcribe
+```
+
+**Request:** `multipart/form-data`
+- `audio_file`: Audio file (wav, mp3, m4a, etc.) - Required
+- `language`: Source language code (default: "auto")
+
+**Response:**
+```json
+{
+  "text": "Transcribed text",
+  "language": "zh",
+  "confidence": 0.95,
+  "processing_time_ms": 150.5
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8000/api/v1/stt/transcribe \
+  -F "audio_file=@speech.wav" \
+  -F "language=zh"
+```
+
+#### Get STT Languages
+```http
+GET /api/v1/stt/languages
+```
+
+**Response:**
+```json
+{
+  "languages": ["en", "zh", "ja", "ko", "es", "fr", "de", "ru", ...]
+}
+```
+
+---
+
+### Translation Service
+
 #### Translate Text
 ```http
-POST /translate/text
+POST /api/v1/translation/translate
 ```
+
+**Request Body:**
+```json
+{
+  "text": "Hello world",
+  "source_language": "en",
+  "target_language": "zh"
+}
+```
+
+**Response:**
+```json
+{
+  "original_text": "Hello world",
+  "translated_text": "你好世界",
+  "source_language": "en",
+  "target_language": "zh",
+  "processing_time_ms": 50.3
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8000/api/v1/translation/translate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello", "source_language": "en", "target_language": "zh"}'
+```
+
+#### Get Translation Languages
+```http
+GET /api/v1/translation/languages
+```
+
+**Response:**
+```json
+{
+  "languages": ["en", "zh", "ja", "ko", "es", "fr", "de", "ru", ...],
+  "supports_batch": true,
+  "supports_streaming": false
+}
+```
+
+---
+
+### TTS Service
+
+#### Synthesize Speech
+```http
+POST /api/v1/tts/synthesize
+```
+
+**Request Body:**
+```json
+{
+  "text": "你好世界",
+  "language": "zh",
+  "voice_id": "default",
+  "return_format": "json"
+}
+```
+
+**Response (when return_format="json"):**
+```json
+{
+  "audio_data": "UklGRi4mAABXQVZF...",
+  "audio_format": "wav",
+  "sample_rate": 22050,
+  "duration_ms": 1500,
+  "processing_time_ms": 30.5
+}
+```
+
+**Response (when return_format="audio"):**
+- Binary audio file stream
+
+**Example (JSON response):**
+```bash
+curl -X POST http://localhost:8000/api/v1/tts/synthesize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "你好世界",
+    "language": "zh",
+    "voice_id": "default",
+    "return_format": "json"
+  }'
+```
+
+**Example (Audio response):**
+```bash
+curl -X POST http://localhost:8000/api/v1/tts/synthesize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "你好世界",
+    "language": "zh",
+    "voice_id": "default",
+    "return_format": "audio"
+  }' \
+  -o output.wav
+```
+
+#### Get TTS Voices
+```http
+GET /api/v1/tts/voices
+```
+
+**Response:**
+```json
+{
+  "voices": [
+    {"id": "en_US-lessac-medium", "language": "en", "gender": "male"},
+    {"id": "zh_CN-huayan-medium", "language": "zh", "gender": "female"}
+  ]
+}
+```
+
+---
+
+## Pipeline Service Endpoints
+
+### Translate Text Pipeline
+```http
+POST /api/v1/pipeline/translate-text
+```
+
+**Flow:** Translation → TTS
 
 **Request Body:**
 ```json
@@ -58,53 +245,83 @@ POST /translate/text
 }
 ```
 
-#### Get Supported Languages
-
-##### STT Languages
-```http
-GET /services/stt/languages
+**Example:**
+```bash
+curl -X POST http://localhost:8000/api/v1/pipeline/translate-text \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello world",
+    "source_language": "en",
+    "target_language": "zh",
+    "voice_id": "default"
+  }'
 ```
 
-**Response:**
+---
+
+### Translate Audio Pipeline
+```http
+POST /api/v1/pipeline/translate-audio
+```
+
+**Flow:** STT → Translation → TTS
+
+**Request:** `multipart/form-data`
+- `audio_file`: Audio file (wav, mp3, m4a, etc.) - Required
+- `source_language`: Source language code (default: "auto")
+- `target_language`: Target language code - Required
+- `voice_id`: TTS voice ID (default: "default")
+- `return_format`: Response format - "json" or "audio" (default: "json")
+
+**Response (when return_format="json"):**
 ```json
 {
-  "languages": ["en", "zh", "ja", "ko", "es", "fr", "de", "ru", ...]
+  "transcription": "你好世界",
+  "transcription_language": "zh",
+  "translation": "Hello world",
+  "translation_language": "en",
+  "audio_data": "UklGRi4mAABXQVZF...",
+  "audio_format": "wav",
+  "audio_sample_rate": 22050,
+  "audio_duration_ms": 1500,
+  "total_latency_ms": 850
 }
 ```
 
-##### Translation Languages
-```http
-GET /services/translation/languages
+**Response (when return_format="audio"):**
+- Binary audio file stream
+- Headers:
+  - `Content-Type`: Audio MIME type (e.g., "audio/wav")
+  - `X-Transcription`: Original transcribed text
+  - `X-Translation`: Translated text
+  - `X-Processing-Time-Ms`: Total processing time in milliseconds
+
+**Example (JSON response):**
+```bash
+curl -X POST http://localhost:8000/api/v1/pipeline/translate-audio \
+  -F "audio_file=@speech.wav" \
+  -F "source_language=zh" \
+  -F "target_language=en" \
+  -F "return_format=json"
 ```
 
-**Response:**
-```json
-{
-  "source_languages": ["en", "zh", "ja", ...],
-  "target_languages": ["en", "zh", "ja", ...]
-}
+**Example (Audio response):**
+```bash
+curl -X POST http://localhost:8000/api/v1/pipeline/translate-audio \
+  -F "audio_file=@speech.wav" \
+  -F "source_language=zh" \
+  -F "target_language=en" \
+  -F "return_format=audio" \
+  -o translated.wav
 ```
 
-##### TTS Voices
-```http
-GET /services/tts/voices
-```
+---
 
-**Response:**
-```json
-{
-  "voices": [
-    {"id": "en_US-lessac-medium", "language": "en", "gender": "male"},
-    {"id": "zh_CN-huayan-medium", "language": "zh", "gender": "female"}
-  ]
-}
-```
+## WebSocket API
 
-### WebSocket API
-
-#### Real-time Translation
+### Real-time Translation
 ```
-WS /ws/translate
+WS /api/v1/ws/translate
 ```
 
 **Connection Flow:**
@@ -381,10 +598,41 @@ import websocket
 import json
 import base64
 
-# REST API Example
-def translate_text(text, source_lang, target_lang):
+# Independent Service Example - Translation Only
+def translate_text_only(text, source_lang, target_lang):
     response = requests.post(
-        "http://localhost:8000/translate/text",
+        "http://localhost:8000/api/v1/translation/translate",
+        json={
+            "text": text,
+            "source_language": source_lang,
+            "target_language": target_lang
+        }
+    )
+    return response.json()
+
+# Independent Service Example - TTS Only
+def synthesize_speech(text, language, voice_id="default", return_format="json"):
+    response = requests.post(
+        "http://localhost:8000/api/v1/tts/synthesize",
+        json={
+            "text": text,
+            "language": language,
+            "voice_id": voice_id,
+            "return_format": return_format
+        }
+    )
+
+    if return_format == "json":
+        result = response.json()
+        audio_bytes = base64.b64decode(result['audio_data'])
+        return result, audio_bytes
+    else:
+        return response.content
+
+# Pipeline Service Example - Text Translation Pipeline
+def translate_text_pipeline(text, source_lang, target_lang):
+    response = requests.post(
+        "http://localhost:8000/api/v1/pipeline/translate-text",
         json={
             "text": text,
             "source_language": source_lang,
@@ -394,10 +642,35 @@ def translate_text(text, source_lang, target_lang):
     )
     return response.json()
 
+# Pipeline Service Example - Audio Translation Pipeline
+def translate_audio_pipeline(audio_path, source_lang, target_lang, return_format="json"):
+    with open(audio_path, 'rb') as f:
+        files = {'audio_file': f}
+        data = {
+            'source_language': source_lang,
+            'target_language': target_lang,
+            'voice_id': 'default',
+            'return_format': return_format
+        }
+        response = requests.post(
+            "http://localhost:8000/api/v1/pipeline/translate-audio",
+            files=files,
+            data=data
+        )
+
+        if return_format == "json":
+            result = response.json()
+            # Decode audio from base64
+            audio_bytes = base64.b64decode(result['audio_data'])
+            return result, audio_bytes
+        else:
+            # Direct audio stream
+            return response.content
+
 # WebSocket Example
 def real_time_translate(audio_stream):
     ws = websocket.WebSocket()
-    ws.connect("ws://localhost:8000/ws/translate")
+    ws.connect("ws://localhost:8000/api/v1/ws/translate")
 
     # Configure
     ws.send(json.dumps({
@@ -422,9 +695,23 @@ def real_time_translate(audio_stream):
 ### JavaScript/TypeScript Client Example
 
 ```javascript
-// REST API Example
-async function translateText(text, sourceLang, targetLang) {
-  const response = await fetch('http://localhost:8000/translate/text', {
+// Independent Service Example - Translation Only
+async function translateTextOnly(text, sourceLang, targetLang) {
+  const response = await fetch('http://localhost:8000/api/v1/translation/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text,
+      source_language: sourceLang,
+      target_language: targetLang
+    })
+  });
+  return response.json();
+}
+
+// Pipeline Service Example - Text Translation Pipeline
+async function translateTextPipeline(text, sourceLang, targetLang) {
+  const response = await fetch('http://localhost:8000/api/v1/pipeline/translate-text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -439,7 +726,7 @@ async function translateText(text, sourceLang, targetLang) {
 
 // WebSocket Example
 function realTimeTranslate() {
-  const ws = new WebSocket('ws://localhost:8000/ws/translate');
+  const ws = new WebSocket('ws://localhost:8000/api/v1/ws/translate');
 
   ws.onopen = () => {
     // Configure
@@ -463,11 +750,13 @@ function realTimeTranslate() {
 
 ## API Versioning
 
-Current version: `v1` (implied in all endpoints)
+Current version: `v1.0`
 
-Future versions will use URL prefixes:
-- `/v1/translate/text` (current, default)
-- `/v2/translate/text` (future)
+API version is included in URL path:
+- `/api/v1/*` - Current version (v1.0)
+- `/api/v2/*` - Future versions
+
+Legacy endpoints (without `/api/v1/` prefix) are deprecated and will be removed in future versions
 
 ## See Also
 

@@ -66,5 +66,9 @@ ENV PYTHONUNBUFFERED=1
 ENV LOG_LEVEL=INFO
 ENV PORT=50051
 
+# Set cuDNN library path for CUDA acceleration
+# This allows CTranslate2 to find cuDNN libraries installed via pip
+ENV LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/nvidia/cudnn/lib:${LD_LIBRARY_PATH}
+
 # Run the server
 CMD ["python", "/app/services/stt_service/server.py"]
