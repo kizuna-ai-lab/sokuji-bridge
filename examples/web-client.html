@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sokuji-Bridge API Test Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .config-section {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .config-section label {
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .config-section input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 300px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .file-upload {
+            border: 2px dashed #ced4da;
+            border-radius: 6px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .file-upload.dragover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-section h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .result-content {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .audio-player {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        .audio-player audio {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            color: #1976D2;
+        }
+
+        .health-status {
+            padding: 20px 30px;
+            background: white;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .health-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .health-indicator.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .health-indicator.degraded {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .health-indicator.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.green {
+            background: #28a745;
+        }
+
+        .status-dot.yellow {
+            background: #ffc107;
+        }
+
+        .status-dot.red {
+            background: #dc3545;
+        }
+
+        .status-dot.gray {
+            background: #6c757d;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+
+        .refresh-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .service-status {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .service-badge {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .service-badge.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .service-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Sokuji-Bridge API Test Client</h1>
+            <p>Test all API endpoints in one place</p>
+        </div>
+
+        <div class="config-section">
+            <label for="apiUrl">API Base URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+        </div>
+
+        <div class="health-status">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div class="health-indicator" id="overallHealth">
+                    <span class="status-dot gray"></span>
+                    <span>Overall Status: <strong>Unknown</strong></span>
+                </div>
+                <div class="service-status" id="serviceStatus">
+                    <span style="color: #6c757d; font-size: 14px;">Services: Not checked</span>
+                </div>
+            </div>
+            <button class="refresh-btn" onclick="checkHealth()" id="healthCheckBtn">
+                🔄 Check Health
+            </button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('stt')">STT Transcribe</button>
+            <button class="tab" onclick="switchTab('translation')">Translation</button>
+            <button class="tab" onclick="switchTab('tts')">TTS Synthesize</button>
+            <button class="tab" onclick="switchTab('pipeline-text')">Pipeline: Text</button>
+            <button class="tab" onclick="switchTab('pipeline-audio')">Pipeline: Audio</button>
+        </div>
+
+        <div class="content">
+            <!-- STT Transcribe Tab -->
+            <div id="stt" class="tab-content active">
+                <div class="info-box">
+                    <strong>Endpoint:</strong> POST /api/v1/stt/transcribe<br>
+                    <strong>Description:</strong> Upload an audio file to get transcription
+                </div>
+
+                <div class="form-group">
+                    <label>Audio File</label>
+                    <div class="file-upload" id="sttFileUpload" onclick="document.getElementById('sttFile').click()">
+                        <input type="file" id="sttFile" accept="audio/*" onchange="handleFileSelect('stt', this)">
+                        <p>📁 Click or drag audio file here</p>
+                        <p style="font-size: 12px; color: #6c757d; margin-top: 5px;">Supported: WAV, MP3, M4A, etc.</p>
+                        <div id="sttFileInfo" class="file-info"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sttLanguage">Language (optional, default: auto)</label>
+                    <select id="sttLanguage">
+                        <option value="auto">Auto Detect</option>
+                        <option value="en">English</option>
+                        <option value="zh">Chinese</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="ru">Russian</option>
+                    </select>
+                </div>
+
+                <button class="btn" onclick="testSTT()" id="sttBtn">Transcribe Audio</button>
+
+                <div id="sttResult"></div>
+            </div>
+
+            <!-- Translation Tab -->
+            <div id="translation" class="tab-content">
+                <div class="info-box">
+                    <strong>Endpoint:</strong> POST /api/v1/translation/translate<br>
+                    <strong>Description:</strong> Translate text from one language to another
+                </div>
+
+                <div class="form-group">
+                    <label for="translationText">Text to Translate</label>
+                    <textarea id="translationText" placeholder="Enter text to translate...">Hello world</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label for="translationSourceLang">Source Language</label>
+                        <select id="translationSourceLang">
+                            <option value="en">English</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="ru">Russian</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="translationTargetLang">Target Language</label>
+                        <select id="translationTargetLang">
+                            <option value="zh">Chinese</option>
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="ru">Russian</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="testTranslation()" id="translationBtn">Translate</button>
+
+                <div id="translationResult"></div>
+            </div>
+
+            <!-- TTS Synthesize Tab -->
+            <div id="tts" class="tab-content">
+                <div class="info-box">
+                    <strong>Endpoint:</strong> POST /api/v1/tts/synthesize<br>
+                    <strong>Description:</strong> Convert text to speech audio
+                </div>
+
+                <div class="form-group">
+                    <label for="ttsText">Text to Synthesize</label>
+                    <textarea id="ttsText" placeholder="Enter text to convert to speech...">Hello, world!</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label for="ttsLanguage">Language</label>
+                        <select id="ttsLanguage">
+                            <option value="en">English</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ttsVoice">Voice ID</label>
+                        <input type="text" id="ttsVoice" value="default" placeholder="default">
+                    </div>
+                </div>
+
+                <button class="btn" onclick="testTTS()" id="ttsBtn">Synthesize Speech</button>
+
+                <div id="ttsResult"></div>
+            </div>
+
+            <!-- Pipeline: Text Tab -->
+            <div id="pipeline-text" class="tab-content">
+                <div class="info-box">
+                    <strong>Endpoint:</strong> POST /api/v1/pipeline/translate-text<br>
+                    <strong>Description:</strong> Translate text and synthesize speech (Translation → TTS)
+                </div>
+
+                <div class="form-group">
+                    <label for="pipelineTextInput">Text to Translate</label>
+                    <textarea id="pipelineTextInput" placeholder="Enter text...">Hello world</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label for="pipelineTextSourceLang">Source Language</label>
+                        <select id="pipelineTextSourceLang">
+                            <option value="en">English</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="es">Spanish</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pipelineTextTargetLang">Target Language</label>
+                        <select id="pipelineTextTargetLang">
+                            <option value="zh">Chinese</option>
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pipelineTextVoice">Voice ID</label>
+                    <input type="text" id="pipelineTextVoice" value="default" placeholder="default">
+                </div>
+
+                <button class="btn" onclick="testPipelineText()" id="pipelineTextBtn">Translate & Synthesize</button>
+
+                <div id="pipelineTextResult"></div>
+            </div>
+
+            <!-- Pipeline: Audio Tab -->
+            <div id="pipeline-audio" class="tab-content">
+                <div class="info-box">
+                    <strong>Endpoint:</strong> POST /api/v1/pipeline/translate-audio<br>
+                    <strong>Description:</strong> Complete audio translation pipeline (STT → Translation → TTS)
+                </div>
+
+                <div class="form-group">
+                    <label>Audio File</label>
+                    <div class="file-upload" id="pipelineAudioFileUpload" onclick="document.getElementById('pipelineAudioFile').click()">
+                        <input type="file" id="pipelineAudioFile" accept="audio/*" onchange="handleFileSelect('pipelineAudio', this)">
+                        <p>📁 Click or drag audio file here</p>
+                        <p style="font-size: 12px; color: #6c757d; margin-top: 5px;">Supported: WAV, MP3, M4A, etc.</p>
+                        <div id="pipelineAudioFileInfo" class="file-info"></div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label for="pipelineAudioSourceLang">Source Language</label>
+                        <select id="pipelineAudioSourceLang">
+                            <option value="auto">Auto Detect</option>
+                            <option value="zh">Chinese</option>
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pipelineAudioTargetLang">Target Language</label>
+                        <select id="pipelineAudioTargetLang">
+                            <option value="en">English</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pipelineAudioVoice">Voice ID</label>
+                    <input type="text" id="pipelineAudioVoice" value="default" placeholder="default">
+                </div>
+
+                <button class="btn" onclick="testPipelineAudio()" id="pipelineAudioBtn">Translate Audio</button>
+
+                <div id="pipelineAudioResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentTab = 'stt';
+        const fileData = {
+            stt: null,
+            pipelineAudio: null
+        };
+
+        // Auto-check health on page load
+        window.addEventListener('load', () => {
+            checkHealth();
+        });
+
+        // Health check function
+        async function checkHealth() {
+            const btn = document.getElementById('healthCheckBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Checking...';
+
+            try {
+                const response = await fetch(`${getApiUrl()}/health`, {
+                    method: 'GET'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    updateHealthStatus(data);
+                } else {
+                    showHealthError();
+                }
+            } catch (error) {
+                showHealthError(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 Check Health';
+            }
+        }
+
+        function updateHealthStatus(data) {
+            const overallHealth = document.getElementById('overallHealth');
+            const serviceStatus = document.getElementById('serviceStatus');
+
+            // Update overall status
+            const status = data.status || 'unknown';
+            const statusClass = status === 'healthy' ? 'healthy' : status === 'degraded' ? 'degraded' : 'error';
+            const dotClass = status === 'healthy' ? 'green' : status === 'degraded' ? 'yellow' : 'red';
+
+            overallHealth.className = `health-indicator ${statusClass}`;
+            overallHealth.innerHTML = `
+                <span class="status-dot ${dotClass}"></span>
+                <span>Overall Status: <strong>${status.charAt(0).toUpperCase() + status.slice(1)}</strong></span>
+            `;
+
+            // Update service statuses
+            if (data.services) {
+                const services = data.services;
+                const badges = Object.entries(services).map(([name, status]) => {
+                    // Support all possible status values from ProviderStatus enum:
+                    // "ready" - Service is ready (healthy)
+                    // "uninitialized", "initializing", "stopped" - Warning states
+                    // "error" - Error state
+                    const healthyStatuses = ['ready', 'healthy'];
+                    const warningStatuses = ['uninitialized', 'initializing', 'stopped'];
+
+                    let badgeClass, icon;
+                    if (healthyStatuses.includes(status)) {
+                        badgeClass = 'healthy';
+                        icon = '✓';
+                    } else if (warningStatuses.includes(status)) {
+                        badgeClass = 'error';  // Using error styling for visibility
+                        icon = '⚠';
+                    } else {
+                        badgeClass = 'error';
+                        icon = '✗';
+                    }
+
+                    return `<span class="service-badge ${badgeClass}">${icon} ${name.toUpperCase()} (${status})</span>`;
+                }).join('');
+
+                serviceStatus.innerHTML = badges;
+            } else {
+                serviceStatus.innerHTML = '<span style="color: #6c757d; font-size: 14px;">No service info</span>';
+            }
+        }
+
+        function showHealthError(message = 'Cannot connect to server') {
+            const overallHealth = document.getElementById('overallHealth');
+            const serviceStatus = document.getElementById('serviceStatus');
+
+            overallHealth.className = 'health-indicator error';
+            overallHealth.innerHTML = `
+                <span class="status-dot red"></span>
+                <span>Overall Status: <strong>Error</strong></span>
+            `;
+
+            serviceStatus.innerHTML = `<span style="color: #721c24; font-size: 14px;">${message}</span>`;
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            currentTab = tabName;
+        }
+
+        // File handling
+        function handleFileSelect(type, input) {
+            const file = input.files[0];
+            if (file) {
+                fileData[type] = file;
+                document.getElementById(`${type}FileInfo`).textContent = `✓ ${file.name} (${formatFileSize(file.size)})`;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // Drag and drop
+        ['sttFileUpload', 'pipelineAudioFileUpload'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    element.classList.add('dragover');
+                });
+
+                element.addEventListener('dragleave', () => {
+                    element.classList.remove('dragover');
+                });
+
+                element.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    element.classList.remove('dragover');
+                    const type = id.replace('FileUpload', '');
+                    const fileInput = document.getElementById(`${type}File`);
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileSelect(type, fileInput);
+                });
+            }
+        });
+
+        // API functions
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value.replace(/\/$/, '');
+        }
+
+        function showLoading(buttonId) {
+            const btn = document.getElementById(buttonId);
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Processing...';
+        }
+
+        function hideLoading(buttonId, text) {
+            const btn = document.getElementById(buttonId);
+            btn.disabled = false;
+            btn.textContent = text;
+        }
+
+        function showResult(containerId, data, error = false) {
+            const container = document.getElementById(containerId);
+            const className = error ? 'error' : 'success';
+            const title = error ? 'Error' : 'Success';
+
+            container.innerHTML = `
+                <div class="result-section">
+                    <h3>${title}</h3>
+                    <div class="result-content">${JSON.stringify(data, null, 2)}</div>
+                </div>
+            `;
+        }
+
+        function showAudioResult(containerId, data) {
+            const container = document.getElementById(containerId);
+            const audioData = data.audio_data;
+            const audioFormat = data.audio_format || 'wav';
+
+            const audioBlob = base64ToBlob(audioData, `audio/${audioFormat}`);
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            container.innerHTML = `
+                <div class="result-section">
+                    <h3>Success</h3>
+                    <div class="result-content">${JSON.stringify(data, null, 2)}</div>
+                    <div class="audio-player">
+                        <h4>Audio Preview</h4>
+                        <audio controls src="${audioUrl}"></audio>
+                        <button class="download-btn" onclick="downloadAudio('${audioUrl}', 'synthesized.${audioFormat}')">
+                            ⬇️ Download Audio
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteArrays = [];
+
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                const byteNumbers = new Array(slice.length);
+
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+
+            return new Blob(byteArrays, { type: mimeType });
+        }
+
+        function downloadAudio(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // STT Test
+        async function testSTT() {
+            if (!fileData.stt) {
+                alert('Please select an audio file first');
+                return;
+            }
+
+            showLoading('sttBtn');
+
+            try {
+                const formData = new FormData();
+                formData.append('audio_file', fileData.stt);
+
+                const language = document.getElementById('sttLanguage').value;
+                if (language !== 'auto') {
+                    formData.append('language', language);
+                }
+
+                const response = await fetch(`${getApiUrl()}/api/v1/stt/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('sttResult', data);
+                } else {
+                    showResult('sttResult', data, true);
+                }
+            } catch (error) {
+                showResult('sttResult', { error: error.message }, true);
+            } finally {
+                hideLoading('sttBtn', 'Transcribe Audio');
+            }
+        }
+
+        // Translation Test
+        async function testTranslation() {
+            const text = document.getElementById('translationText').value.trim();
+            if (!text) {
+                alert('Please enter text to translate');
+                return;
+            }
+
+            showLoading('translationBtn');
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/v1/translation/translate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        source_language: document.getElementById('translationSourceLang').value,
+                        target_language: document.getElementById('translationTargetLang').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('translationResult', data);
+                } else {
+                    showResult('translationResult', data, true);
+                }
+            } catch (error) {
+                showResult('translationResult', { error: error.message }, true);
+            } finally {
+                hideLoading('translationBtn', 'Translate');
+            }
+        }
+
+        // TTS Test
+        async function testTTS() {
+            const text = document.getElementById('ttsText').value.trim();
+            if (!text) {
+                alert('Please enter text to synthesize');
+                return;
+            }
+
+            showLoading('ttsBtn');
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/v1/tts/synthesize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        language: document.getElementById('ttsLanguage').value,
+                        voice_id: document.getElementById('ttsVoice').value,
+                        return_format: 'json'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAudioResult('ttsResult', data);
+                } else {
+                    showResult('ttsResult', data, true);
+                }
+            } catch (error) {
+                showResult('ttsResult', { error: error.message }, true);
+            } finally {
+                hideLoading('ttsBtn', 'Synthesize Speech');
+            }
+        }
+
+        // Pipeline: Text Test
+        async function testPipelineText() {
+            const text = document.getElementById('pipelineTextInput').value.trim();
+            if (!text) {
+                alert('Please enter text');
+                return;
+            }
+
+            showLoading('pipelineTextBtn');
+
+            try {
+                const response = await fetch(`${getApiUrl()}/api/v1/pipeline/translate-text`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        source_language: document.getElementById('pipelineTextSourceLang').value,
+                        target_language: document.getElementById('pipelineTextTargetLang').value,
+                        voice_id: document.getElementById('pipelineTextVoice').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('pipelineTextResult', data);
+                } else {
+                    showResult('pipelineTextResult', data, true);
+                }
+            } catch (error) {
+                showResult('pipelineTextResult', { error: error.message }, true);
+            } finally {
+                hideLoading('pipelineTextBtn', 'Translate & Synthesize');
+            }
+        }
+
+        // Pipeline: Audio Test
+        async function testPipelineAudio() {
+            if (!fileData.pipelineAudio) {
+                alert('Please select an audio file first');
+                return;
+            }
+
+            showLoading('pipelineAudioBtn');
+
+            try {
+                const formData = new FormData();
+                formData.append('audio_file', fileData.pipelineAudio);
+                formData.append('source_language', document.getElementById('pipelineAudioSourceLang').value);
+                formData.append('target_language', document.getElementById('pipelineAudioTargetLang').value);
+                formData.append('voice_id', document.getElementById('pipelineAudioVoice').value);
+                formData.append('return_format', 'json');
+
+                const response = await fetch(`${getApiUrl()}/api/v1/pipeline/translate-audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAudioResult('pipelineAudioResult', data);
+                } else {
+                    showResult('pipelineAudioResult', data, true);
+                }
+            } catch (error) {
+                showResult('pipelineAudioResult', { error: error.message }, true);
+            } finally {
+                hideLoading('pipelineAudioBtn', 'Translate Audio');
+            }
+        }
+    </script>
+</body>
+</html>

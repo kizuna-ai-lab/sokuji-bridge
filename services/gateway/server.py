@@ -9,9 +9,11 @@ import asyncio
 import base64
 import io
 import os
+import struct
 import sys
 import tempfile
 import time
+import wave
 from typing import Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form, APIRouter
@@ -127,6 +129,34 @@ class TTSResponse(BaseModel):
     sample_rate: int
     duration_ms: float
     processing_time_ms: float
+
+
+# ============================================================================
+# === Audio Conversion Utilities ===
+# ============================================================================
+
+def pcm_to_wav(pcm_data: bytes, sample_rate: int, num_channels: int = 1, sample_width: int = 2) -> bytes:
+    """
+    Convert raw PCM audio data to WAV format
+
+    Args:
+        pcm_data: Raw PCM audio bytes (int16 format)
+        sample_rate: Sample rate in Hz (e.g., 22050, 44100)
+        num_channels: Number of audio channels (1=mono, 2=stereo)
+        sample_width: Bytes per sample (2 for int16, 4 for int32)
+
+    Returns:
+        WAV formatted audio bytes with proper header
+    """
+    wav_buffer = io.BytesIO()
+
+    with wave.open(wav_buffer, 'wb') as wav_file:
+        wav_file.setnchannels(num_channels)
+        wav_file.setsampwidth(sample_width)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(pcm_data)
+
+    return wav_buffer.getvalue()
 
 
 @app.on_event("startup")
@@ -384,10 +414,24 @@ async def translate_audio(
         total_latency_ms = (time.time() - start_time) * 1000
         logger.info(f"Translation completed in {total_latency_ms:.0f}ms")
 
+        # Convert int16 PCM to WAV if needed
+        audio_data = synthesis.audio_data
+        audio_format = synthesis.format
+
+        if audio_format == "int16":
+            logger.debug("Converting int16 PCM to WAV format")
+            audio_data = pcm_to_wav(
+                pcm_data=audio_data,
+                sample_rate=synthesis.sample_rate,
+                num_channels=1,
+                sample_width=2
+            )
+            audio_format = "wav"
+
         # Return based on format
         if return_format == "json":
             # Return JSON with base64 encoded audio
-            audio_base64 = base64.b64encode(synthesis.audio_data).decode('utf-8')
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
 
             return AudioTranslateResponse(
                 transcription=transcription.text,
@@ -395,15 +439,15 @@ async def translate_audio(
                 translation=translation.translated_text,
                 translation_language=target_language,
                 audio_data=audio_base64,
-                audio_format=synthesis.format if synthesis.format else "wav",
+                audio_format=audio_format,
                 audio_sample_rate=synthesis.sample_rate,
                 audio_duration_ms=synthesis.duration_ms,
                 total_latency_ms=total_latency_ms,
             )
         else:
             # Return audio file directly
-            audio_io = io.BytesIO(synthesis.audio_data)
-            media_type = "audio/wav" if synthesis.format == "wav" else f"audio/{synthesis.format}"
+            audio_io = io.BytesIO(audio_data)
+            media_type = "audio/wav" if audio_format == "wav" else f"audio/{audio_format}"
 
             return StreamingResponse(
                 audio_io,
@@ -718,22 +762,36 @@ async def synthesize_speech(request: TTSRequest):
 
         processing_time_ms = (time.time() - start_time) * 1000
 
+        # Convert int16 PCM to WAV if needed
+        audio_data = synthesis_result.audio_data
+        audio_format = synthesis_result.format
+
+        if audio_format == "int16":
+            logger.debug("Converting int16 PCM to WAV format")
+            audio_data = pcm_to_wav(
+                pcm_data=audio_data,
+                sample_rate=synthesis_result.sample_rate,
+                num_channels=1,
+                sample_width=2
+            )
+            audio_format = "wav"
+
         # Return based on format
         if request.return_format == "json":
             # Return JSON with base64 encoded audio
-            audio_base64 = base64.b64encode(synthesis_result.audio_data).decode('utf-8')
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
 
             return TTSResponse(
                 audio_data=audio_base64,
-                audio_format=synthesis_result.format if synthesis_result.format else "wav",
+                audio_format=audio_format,
                 sample_rate=synthesis_result.sample_rate,
                 duration_ms=synthesis_result.duration_ms,
                 processing_time_ms=processing_time_ms
             )
         else:
             # Return audio file directly
-            audio_io = io.BytesIO(synthesis_result.audio_data)
-            media_type = "audio/wav" if synthesis_result.format == "wav" else f"audio/{synthesis_result.format}"
+            audio_io = io.BytesIO(audio_data)
+            media_type = "audio/wav" if audio_format == "wav" else f"audio/{audio_format}"
 
             return StreamingResponse(
                 audio_io,
