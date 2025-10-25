@@ -31,12 +31,19 @@ GET /health
 {
   "status": "healthy" | "degraded",
   "services": {
-    "stt": "healthy" | "error",
-    "translation": "healthy" | "error",
-    "tts": "healthy" | "error"
+    "stt": "ready" | "uninitialized" | "initializing" | "error" | "stopped",
+    "translation": "ready" | "uninitialized" | "initializing" | "error" | "stopped",
+    "tts": "ready" | "uninitialized" | "initializing" | "error" | "stopped"
   }
 }
 ```
+
+**Service Status Values:**
+- `ready` - Service is initialized and ready to handle requests
+- `uninitialized` - Service has not been initialized yet
+- `initializing` - Service is currently initializing
+- `error` - Service encountered an error
+- `stopped` - Service has been stopped
 
 #### API Information
 ```http

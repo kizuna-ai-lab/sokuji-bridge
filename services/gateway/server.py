@@ -474,12 +474,14 @@ async def translate_audio(
 @ws_router.websocket("/translate")
 async def websocket_translate(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time translation
+    WebSocket endpoint for real-time translation using streaming gRPC
 
-    Client sends audio chunks, receives translated audio back.
-    Protocol:
-    - Client sends: JSON config + binary audio chunks
-    - Server sends: Binary audio chunks (synthesized translation)
+    Protocol (following API documentation):
+    - Client sends config: {"type": "config", "source_language": "zh", "target_language": "en", ...}
+    - Client sends audio: {"type": "audio", "data": "base64_pcm_data", "timestamp": 123456789}
+    - Server sends transcription: {"type": "transcription", "text": "...", "language": "zh", ...}
+    - Server sends translation: {"type": "translation", "text": "...", ...}
+    - Server sends audio: {"type": "audio", "data": "base64_wav_data", "format": "wav", ...}
     """
     await websocket.accept()
     logger.info("WebSocket connection established")
@@ -488,73 +490,204 @@ async def websocket_translate(websocket: WebSocket):
         await websocket.close(code=1011, reason="Gateway not initialized")
         return
 
-    try:
-        # Receive initial configuration
-        config = await websocket.receive_json()
-        source_lang = config.get("source_language", "auto")
-        target_lang = config.get("target_language", "en")
-        voice_id = config.get("voice_id", "default")
-        sample_rate = config.get("sample_rate", 16000)
+    # Configuration variables
+    source_lang = "auto"
+    target_lang = "en"
+    voice_id = "default"
+    sample_rate = 16000
 
-        logger.info(f"WebSocket config: {source_lang} -> {target_lang}, voice={voice_id}")
+    # Audio stream queue for gRPC streaming
+    audio_queue = asyncio.Queue()
+    stream_active = True
 
-        # Process audio stream
-        while True:
-            # Receive audio chunk
-            audio_data = await websocket.receive_bytes()
-
-            # Create AudioChunk proto
-            audio_chunk = common_pb2.AudioChunk(
-                data=audio_data,
-                sample_rate=sample_rate,
-                timestamp=time.time(),
-                channels=1,
-                format="int16",
-            )
-
-            # STT: Transcribe
-            transcription = await clients.stt.transcribe(
-                audio_chunk,
-                language=source_lang if source_lang != "auto" else None,
-            )
-
-            # Skip if empty transcription
-            if not transcription.text.strip():
+    async def audio_stream_generator():
+        """Generate audio chunks for gRPC streaming"""
+        while stream_active:
+            try:
+                audio_chunk = await asyncio.wait_for(audio_queue.get(), timeout=1.0)
+                if audio_chunk is None:  # Sentinel value to stop stream
+                    break
+                yield audio_chunk
+            except asyncio.TimeoutError:
                 continue
 
-            logger.debug(f"Transcribed: {transcription.text}")
+    async def process_transcription_stream():
+        """Process STT transcription stream and handle Translation + TTS"""
+        try:
+            async for transcription in clients.stt.transcribe_stream(
+                audio_stream_generator()
+            ):
+                # Skip if empty transcription
+                if not transcription.text.strip():
+                    continue
 
-            # Translation: Translate
-            translation = await clients.translation.translate(
-                text=transcription.text,
-                source_lang=transcription.language,
-                target_lang=target_lang,
-            )
+                logger.debug(f"Transcribed: {transcription.text}")
 
-            logger.debug(f"Translated: {translation.translated_text}")
+                # Send transcription message
+                await websocket.send_json({
+                    "type": "transcription",
+                    "text": transcription.text,
+                    "language": transcription.language,
+                    "is_final": True,
+                    "confidence": transcription.confidence,
+                    "timestamp": int(time.time() * 1000)
+                })
 
-            # TTS: Synthesize
-            synthesis = await clients.tts.synthesize(
-                text=translation.translated_text,
-                voice_id=voice_id,
-                language=target_lang,
-            )
+                # Translation: Translate
+                translation = await clients.translation.translate(
+                    text=transcription.text,
+                    source_lang=transcription.language,
+                    target_lang=target_lang,
+                )
 
-            # Send synthesized audio back
-            await websocket.send_bytes(synthesis.audio_data)
+                logger.debug(f"Translated: {translation.translated_text}")
 
-            # Optionally send metadata
+                # Send translation message
+                await websocket.send_json({
+                    "type": "translation",
+                    "text": translation.translated_text,
+                    "source_language": transcription.language,
+                    "target_language": target_lang,
+                    "timestamp": int(time.time() * 1000)
+                })
+
+                # TTS: Synthesize
+                synthesis = await clients.tts.synthesize(
+                    text=translation.translated_text,
+                    voice_id=voice_id,
+                    language=target_lang,
+                )
+
+                # Convert int16 PCM to WAV format
+                audio_data = synthesis.audio_data
+                audio_format = synthesis.format
+
+                if audio_format == "int16":
+                    logger.debug("Converting int16 PCM to WAV format for WebSocket")
+                    audio_data = pcm_to_wav(
+                        pcm_data=audio_data,
+                        sample_rate=synthesis.sample_rate,
+                        num_channels=1,
+                        sample_width=2
+                    )
+                    audio_format = "wav"
+
+                # Encode audio to base64
+                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+
+                # Send audio message
+                await websocket.send_json({
+                    "type": "audio",
+                    "data": audio_base64,
+                    "format": audio_format,
+                    "sample_rate": synthesis.sample_rate,
+                    "timestamp": int(time.time() * 1000)
+                })
+
+        except Exception as e:
+            logger.error(f"Transcription stream processing error: {e}")
             await websocket.send_json({
-                "transcription": transcription.text,
-                "translation": translation.translated_text,
-                "duration_ms": synthesis.duration_ms,
+                "type": "error",
+                "message": f"Stream processing failed: {str(e)}"
             })
+
+    # Start the transcription processing task
+    transcription_task = asyncio.create_task(process_transcription_stream())
+
+    try:
+        # Process incoming WebSocket messages
+        while True:
+            # Receive JSON message
+            message = await websocket.receive_json()
+            message_type = message.get("type")
+
+            if message_type == "config":
+                # Handle configuration message
+                source_lang = message.get("source_language", "auto")
+                target_lang = message.get("target_language", "en")
+                voice_id = message.get("voice_id", "default")
+                sample_rate = message.get("sample_rate", 16000)
+
+                logger.info(f"WebSocket config: {source_lang} -> {target_lang}, voice={voice_id}")
+
+            elif message_type == "audio":
+                # Handle audio message
+                try:
+                    # Decode base64 audio data
+                    audio_base64 = message.get("data")
+                    if not audio_base64:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Missing audio data"
+                        })
+                        continue
+
+                    audio_bytes = base64.b64decode(audio_base64)
+
+                    # Create AudioChunk proto
+                    audio_chunk = common_pb2.AudioChunk(
+                        data=audio_bytes,
+                        sample_rate=sample_rate,
+                        timestamp=time.time(),
+                        channels=1,
+                        format="int16",
+                    )
+
+                    # Diagnostic logging
+                    expected_duration_ms = (len(audio_bytes) / 2 / sample_rate * 1000)
+                    logger.debug(f"📤 Sending audio chunk: {len(audio_bytes)} bytes, "
+                                f"expected_duration={expected_duration_ms:.0f}ms")
+
+                    # Add to queue for streaming
+                    await audio_queue.put(audio_chunk)
+
+                except base64.binascii.Error as e:
+                    logger.error(f"Base64 decode error: {e}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Invalid base64 audio data: {str(e)}"
+                    })
+                except Exception as e:
+                    logger.error(f"Audio processing error: {e}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Audio processing failed: {str(e)}"
+                    })
+
+            else:
+                # Unknown message type
+                logger.warning(f"Unknown WebSocket message type: {message_type}")
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Unknown message type: {message_type}"
+                })
 
     except WebSocketDisconnect:
         logger.info("WebSocket connection closed by client")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        await websocket.close(code=1011, reason=str(e))
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": str(e)
+            })
+        except:
+            pass
+    finally:
+        # Cleanup: stop the stream and wait for transcription task
+        stream_active = False
+        await audio_queue.put(None)  # Sentinel value to stop generator
+
+        try:
+            await asyncio.wait_for(transcription_task, timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning("Transcription task did not complete in time")
+            transcription_task.cancel()
+
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 

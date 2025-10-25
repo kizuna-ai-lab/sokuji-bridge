@@ -9,6 +9,7 @@ import numpy as np
 import time
 from typing import AsyncIterator, Optional, Dict, Any
 from pathlib import Path
+from loguru import logger
 
 from src.providers.base import (
     STTProvider,
@@ -231,14 +232,21 @@ class FasterWhisperProvider(STTProvider):
         # Buffer for accumulating audio
         audio_buffer = []
         buffer_duration_ms = 0
-        max_buffer_duration_ms = 30000  # 30 seconds max
+        max_buffer_duration_ms = 2000  # 2 seconds for real-time streaming
 
         async for audio_chunk in audio_stream:
             audio_buffer.append(audio_chunk)
             buffer_duration_ms += audio_chunk.duration_ms
 
+            # Diagnostic logging
+            logger.info(f"📊 Buffer accumulation: total={buffer_duration_ms:.0f}ms, "
+                       f"chunk={audio_chunk.duration_ms:.0f}ms, "
+                       f"chunk_size={len(audio_chunk.data)}bytes, "
+                       f"chunks_count={len(audio_buffer)}")
+
             # Process when buffer reaches threshold or stream ends
             if buffer_duration_ms >= max_buffer_duration_ms:
+                logger.info(f"🎯 Triggering transcription: {buffer_duration_ms:.0f}ms >= {max_buffer_duration_ms}ms")
                 # Merge audio chunks
                 merged_audio = self._merge_audio_chunks(audio_buffer)
 

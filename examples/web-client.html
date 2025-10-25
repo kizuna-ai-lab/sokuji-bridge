@@ -217,6 +217,14 @@
             transform: none;
         }
 
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333 0%, #bd2130 100%) !important;
+        }
+
         .result-section {
             margin-top: 30px;
             padding: 20px;
@@ -463,6 +471,7 @@
             <button class="tab" onclick="switchTab('tts')">TTS Synthesize</button>
             <button class="tab" onclick="switchTab('pipeline-text')">Pipeline: Text</button>
             <button class="tab" onclick="switchTab('pipeline-audio')">Pipeline: Audio</button>
+            <button class="tab" onclick="switchTab('websocket')">WebSocket: Real-time</button>
         </div>
 
         <div class="content">
@@ -681,6 +690,78 @@
 
                 <div id="pipelineAudioResult"></div>
             </div>
+
+            <!-- WebSocket Real-time Tab -->
+            <div id="websocket" class="tab-content">
+                <div class="info-box">
+                    <strong>Endpoint:</strong> WS /api/v1/ws/translate<br>
+                    <strong>Description:</strong> Real-time audio translation with microphone input and live audio playback
+                </div>
+
+                <div class="form-group">
+                    <label>Connection Status</label>
+                    <div id="wsConnectionStatus" class="health-indicator">
+                        <span class="status-dot gray"></span>
+                        <span>Status: <strong>Disconnected</strong></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label for="wsSourceLang">Source Language</label>
+                        <select id="wsSourceLang">
+                            <option value="auto">Auto Detect</option>
+                            <option value="zh">Chinese</option>
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wsTargetLang">Target Language</label>
+                        <select id="wsTargetLang">
+                            <option value="en">English</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="wsVoiceId">Voice ID</label>
+                    <input type="text" id="wsVoiceId" value="default" placeholder="default">
+                </div>
+
+                <button class="btn" onclick="toggleWebSocketConnection()" id="wsConnectBtn">Connect & Start Recording</button>
+
+                <div id="wsTranscriptionResult" style="display: none;">
+                    <div class="result-section">
+                        <h3>Live Transcription</h3>
+                        <div class="result-content" id="wsTranscriptionText" style="min-height: 60px;">Waiting for audio...</div>
+                    </div>
+                </div>
+
+                <div id="wsTranslationResult" style="display: none;">
+                    <div class="result-section">
+                        <h3>Translation</h3>
+                        <div class="result-content" id="wsTranslationText" style="min-height: 60px;">Waiting for translation...</div>
+                    </div>
+                </div>
+
+                <div id="wsStats" style="display: none;">
+                    <div class="result-section">
+                        <h3>Statistics</h3>
+                        <div class="result-content" id="wsStatsText" style="min-height: 40px;">
+                            Audio chunks sent: <span id="wsChunksSent">0</span> |
+                            Transcriptions: <span id="wsTranscriptionCount">0</span> |
+                            Translations: <span id="wsTranslationCount">0</span> |
+                            Audio played: <span id="wsAudioCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -691,6 +772,21 @@
             stt: null,
             pipelineAudio: null
         };
+
+        // WebSocket variables
+        let wsConnection = null;
+        let wsMediaStream = null;
+        let wsAudioContext = null;
+        let wsMediaRecorder = null;
+        let wsIsRecording = false;
+        let wsStats = {
+            chunksSent: 0,
+            transcriptionCount: 0,
+            translationCount: 0,
+            audioCount: 0
+        };
+        let wsAudioQueue = [];
+        let wsIsPlayingAudio = false;
 
         // Auto-check health on page load
         window.addEventListener('load', () => {
@@ -1103,6 +1199,352 @@
             } finally {
                 hideLoading('pipelineAudioBtn', 'Translate Audio');
             }
+        }
+
+        // ============================================
+        // WebSocket Real-time Translation Functions
+        // ============================================
+
+        // Toggle WebSocket connection
+        async function toggleWebSocketConnection() {
+            if (wsIsRecording) {
+                disconnectWebSocket();
+            } else {
+                await connectWebSocket();
+            }
+        }
+
+        // Connect WebSocket and start recording
+        async function connectWebSocket() {
+            try {
+                updateWSConnectionStatus('connecting', 'Connecting...');
+
+                // Get configuration
+                const sourceLang = document.getElementById('wsSourceLang').value;
+                const targetLang = document.getElementById('wsTargetLang').value;
+                const voiceId = document.getElementById('wsVoiceId').value;
+
+                // Request microphone access with echo cancellation and noise suppression (always enabled)
+                const constraints = {
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        sampleRate: 16000,
+                        channelCount: 1
+                    }
+                };
+
+                wsMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // Create WebSocket connection
+                const wsUrl = getApiUrl().replace('http', 'ws') + '/api/v1/ws/translate';
+                wsConnection = new WebSocket(wsUrl);
+
+                wsConnection.onopen = () => {
+                    // Send configuration
+                    const config = {
+                        type: 'config',
+                        source_language: sourceLang,
+                        target_language: targetLang,
+                        voice_id: voiceId,
+                        sample_rate: 16000,
+                        channels: 1
+                    };
+                    wsConnection.send(JSON.stringify(config));
+
+                    updateWSConnectionStatus('connected', 'Connected & Recording');
+                    startMicrophoneRecording();
+
+                    // Show result areas
+                    document.getElementById('wsTranscriptionResult').style.display = 'block';
+                    document.getElementById('wsTranslationResult').style.display = 'block';
+                    document.getElementById('wsStats').style.display = 'block';
+
+                    // Update button
+                    document.getElementById('wsConnectBtn').textContent = 'Stop & Disconnect';
+                    document.getElementById('wsConnectBtn').classList.add('btn-danger');
+                };
+
+                wsConnection.onmessage = handleWebSocketMessage;
+
+                wsConnection.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateWSConnectionStatus('error', 'Connection Error');
+                };
+
+                wsConnection.onclose = () => {
+                    updateWSConnectionStatus('disconnected', 'Disconnected');
+                    cleanupWebSocket();
+                };
+
+            } catch (error) {
+                console.error('Error connecting WebSocket:', error);
+                alert('Failed to access microphone or connect: ' + error.message);
+                updateWSConnectionStatus('error', 'Error: ' + error.message);
+                cleanupWebSocket();
+            }
+        }
+
+        // Disconnect WebSocket and stop recording
+        function disconnectWebSocket() {
+            if (wsConnection) {
+                wsConnection.close();
+            }
+            cleanupWebSocket();
+        }
+
+        // Clean up WebSocket resources
+        function cleanupWebSocket() {
+            // Stop recording
+            if (wsMediaRecorder && wsIsRecording) {
+                wsMediaRecorder.stop();
+            }
+
+            // Stop media stream
+            if (wsMediaStream) {
+                wsMediaStream.getTracks().forEach(track => track.stop());
+                wsMediaStream = null;
+            }
+
+            // Close audio context
+            if (wsAudioContext) {
+                wsAudioContext.close();
+                wsAudioContext = null;
+            }
+
+            wsIsRecording = false;
+            wsConnection = null;
+            wsMediaRecorder = null;
+
+            // Update UI
+            document.getElementById('wsConnectBtn').textContent = 'Connect & Start Recording';
+            document.getElementById('wsConnectBtn').classList.remove('btn-danger');
+            updateWSConnectionStatus('disconnected', 'Disconnected');
+        }
+
+        // Start microphone recording
+        function startMicrophoneRecording() {
+            try {
+                // Create AudioContext for processing
+                wsAudioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
+                });
+
+                const source = wsAudioContext.createMediaStreamSource(wsMediaStream);
+
+                // Create ScriptProcessor for audio processing
+                const processor = wsAudioContext.createScriptProcessor(4096, 1, 1);
+
+                processor.onaudioprocess = (e) => {
+                    if (!wsIsRecording || !wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+                        return;
+                    }
+
+                    const inputData = e.inputBuffer.getChannelData(0);
+
+                    // Convert Float32Array to Int16Array (PCM)
+                    const pcmData = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        const s = Math.max(-1, Math.min(1, inputData[i]));
+                        pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+
+                    // Convert to base64
+                    const base64Audio = arrayBufferToBase64(pcmData.buffer);
+
+                    // Diagnostic logging
+                    const expectedDurationMs = (pcmData.length / 16000 * 1000).toFixed(0);
+                    console.log(`📤 Sending audio: ${pcmData.length} samples, ${pcmData.buffer.byteLength} bytes, ~${expectedDurationMs}ms`);
+
+                    // Send audio chunk
+                    const audioMessage = {
+                        type: 'audio',
+                        data: base64Audio,
+                        timestamp: Date.now()
+                    };
+
+                    try {
+                        wsConnection.send(JSON.stringify(audioMessage));
+                        wsStats.chunksSent++;
+                        updateWSStats();
+                    } catch (error) {
+                        console.error('Error sending audio chunk:', error);
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(wsAudioContext.destination);
+
+                wsIsRecording = true;
+
+            } catch (error) {
+                console.error('Error starting microphone recording:', error);
+                alert('Failed to start recording: ' + error.message);
+            }
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(event) {
+            try {
+                const message = JSON.parse(event.data);
+
+                switch (message.type) {
+                    case 'transcription':
+                        handleTranscription(message);
+                        break;
+                    case 'translation':
+                        handleTranslation(message);
+                        break;
+                    case 'audio':
+                        handleAudioPlayback(message);
+                        break;
+                    case 'error':
+                        console.error('WebSocket error:', message);
+                        alert('Error: ' + message.message);
+                        break;
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            } catch (error) {
+                console.error('Error handling WebSocket message:', error);
+            }
+        }
+
+        // Handle transcription message
+        function handleTranscription(message) {
+            const transcriptionDiv = document.getElementById('wsTranscriptionText');
+            const text = message.text || '';
+            const isFinal = message.is_final || false;
+            const confidence = message.confidence || 0;
+
+            transcriptionDiv.textContent = text +
+                (isFinal ? ' [Final]' : ' [Interim]') +
+                ' (Confidence: ' + (confidence * 100).toFixed(1) + '%)';
+
+            if (isFinal) {
+                wsStats.transcriptionCount++;
+                updateWSStats();
+            }
+        }
+
+        // Handle translation message
+        function handleTranslation(message) {
+            const translationDiv = document.getElementById('wsTranslationText');
+            translationDiv.textContent = message.text || '';
+
+            wsStats.translationCount++;
+            updateWSStats();
+        }
+
+        // Handle audio playback
+        function handleAudioPlayback(message) {
+            const audioData = message.data;
+            const format = message.format || 'wav';
+            const sampleRate = message.sample_rate || 22050;
+
+            // Add to playback queue
+            wsAudioQueue.push({
+                data: audioData,
+                format: format,
+                sampleRate: sampleRate
+            });
+
+            wsStats.audioCount++;
+            updateWSStats();
+
+            // Start playback if not already playing
+            if (!wsIsPlayingAudio) {
+                playNextAudio();
+            }
+        }
+
+        // Play next audio in queue
+        async function playNextAudio() {
+            if (wsAudioQueue.length === 0) {
+                wsIsPlayingAudio = false;
+                return;
+            }
+
+            wsIsPlayingAudio = true;
+            const audioItem = wsAudioQueue.shift();
+
+            try {
+                // Decode base64 audio
+                const audioBlob = base64ToBlob(audioItem.data, `audio/${audioItem.format}`);
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                // Create audio element
+                const audio = new Audio(audioUrl);
+
+                // Play audio
+                await audio.play();
+
+                // Wait for audio to finish
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    playNextAudio(); // Play next in queue
+                };
+
+                audio.onerror = (error) => {
+                    console.error('Audio playback error:', error);
+                    URL.revokeObjectURL(audioUrl);
+                    playNextAudio(); // Try next in queue
+                };
+
+            } catch (error) {
+                console.error('Error playing audio:', error);
+                playNextAudio(); // Try next in queue
+            }
+        }
+
+        // Update WebSocket connection status
+        function updateWSConnectionStatus(status, text) {
+            const statusDiv = document.getElementById('wsConnectionStatus');
+            const statusDot = statusDiv.querySelector('.status-dot');
+            const statusText = statusDiv.querySelector('strong');
+
+            statusDiv.className = 'health-indicator';
+            statusDot.className = 'status-dot';
+
+            switch (status) {
+                case 'connected':
+                    statusDiv.classList.add('healthy');
+                    statusDot.classList.add('green');
+                    break;
+                case 'connecting':
+                    statusDiv.classList.add('degraded');
+                    statusDot.classList.add('yellow');
+                    break;
+                case 'error':
+                    statusDiv.classList.add('error');
+                    statusDot.classList.add('red');
+                    break;
+                default: // disconnected
+                    statusDot.classList.add('gray');
+                    break;
+            }
+
+            statusText.textContent = text;
+        }
+
+        // Update WebSocket statistics
+        function updateWSStats() {
+            document.getElementById('wsChunksSent').textContent = wsStats.chunksSent;
+            document.getElementById('wsTranscriptionCount').textContent = wsStats.transcriptionCount;
+            document.getElementById('wsTranslationCount').textContent = wsStats.translationCount;
+            document.getElementById('wsAudioCount').textContent = wsStats.audioCount;
+        }
+
+        // Helper: Convert ArrayBuffer to Base64
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
         }
     </script>
 </body>
