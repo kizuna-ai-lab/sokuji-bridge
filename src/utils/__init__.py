@@ -19,7 +19,7 @@ from src.utils.audio_io import (
 )
 
 # Microphone input
-# from utils.microphone import MicrophoneInput  # Temporarily disabled
+from src.utils.microphone import MicrophoneInput
 
 # Speaker output
 from src.utils.speaker import SpeakerOutput
@@ -28,13 +28,13 @@ from src.utils.speaker import SpeakerOutput
 from src.utils.audio_file import AudioFileReader, AudioFileWriter
 
 # Voice Activity Detection
-from src.utils.vad import (
-    VADProvider,
-    VADResult,
-    SpeechState,
-    DummyVAD,
-    EnergyVAD,
-)
+# from src.utils.vad import (
+#     VADProvider,
+#     VADResult,
+#     SpeechState,
+#     DummyVAD,
+#     EnergyVAD,
+# )
 
 __all__ = [
     # Core abstractions
@@ -45,14 +45,14 @@ __all__ = [
     "get_default_input_device",
     "get_default_output_device",
     # Implementations
-    # "MicrophoneInput",  # Temporarily disabled
+    "MicrophoneInput",
     "SpeakerOutput",
     "AudioFileReader",
     "AudioFileWriter",
-    # VAD
-    "VADProvider",
-    "VADResult",
-    "SpeechState",
-    "DummyVAD",
-    "EnergyVAD",
+    # VAD - Disabled until vad.py is implemented
+    # "VADProvider",
+    # "VADResult",
+    # "SpeechState",
+    # "DummyVAD",
+    # "EnergyVAD",
 ]

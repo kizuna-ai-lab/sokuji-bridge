@@ -1,0 +1,75 @@
+# SimulStreaming 低显存配置
+#
+# 适用于显存受限的 GPU (< 4GB 可用显存)
+# 使用 small 模型 + INT8 量化 + 优化缓冲配置
+#
+# 显存需求: ~1-1.5 GB (vs large-v3 的 4-6GB)
+# 性能权衡: 准确率略低 (~85% vs 92%)，但延迟仍然很低
+
+stt:
+  provider: "simulstreaming"
+  config:
+    # === 模型配置 (显存优化) ===
+    model_size: "small"                  # small 模型 (244M 参数, ~960MB)
+                                         # 选项: tiny, base, small, medium, large-v2, large-v3
+    model_path: "./small.pt"             # 自动下载
+    device: "auto"                       # auto, cuda, cpu
+    compute_type: "int8"                 # INT8 量化降低 ~50% 显存
+
+    # === AlignAtt 低延迟配置 ===
+    frame_threshold: 30                  # 30 frames * 0.02s = 0.6s 提前发射
+                                         # 目标延迟: <2s
+    rewind_threshold: 999                # 禁用 rewind
+
+    # === 音频缓冲配置 (显存优化) ===
+    audio_max_len: 20.0                  # 最大 20s 缓冲 (vs 默认 30s)
+                                         # 降低显存占用但仍够用
+    audio_min_len: 0.3                   # 最小 300ms 开始处理
+    min_chunk_size: 0.3                  # 接收 300ms 音频块
+
+    # === Beam Search 配置 (显存优化) ===
+    beam_size: 1                         # Greedy 解码 (最低显存)
+                                         # 如果显存充足可改为 3 提高准确率
+
+    # === 上下文管理 (显存优化) ===
+    max_context_tokens: 128              # 减少上下文 token (vs 默认 224)
+    init_prompt: ""                      # 可选术语提示
+    static_init_prompt: ""               # 可选静态上下文
+
+    # === VAD 配置 ===
+    vad_enabled: true                    # 启用 VAD 改善分段
+    vac_chunk_size: 0.04                 # 40ms VAD 采样
+
+    # === 其他配置 ===
+    cif_ckpt_path: null                  # 词边界检测 (可选)
+    never_fire: false                    # 智能截断
+    language: "auto"                     # 或指定: zh, en, ja, ko
+    task: "transcribe"                   # transcribe 或 translate
+
+# 性能预期 (small 模型 + INT8):
+# - 延迟: 1.5-2s (vs large-v3 的 <1.5s)
+# - 准确率: ~85% (vs large-v3 的 ~92%)
+# - 显存: ~1-1.5GB (vs large-v3 的 4-6GB)
+# - 首字延迟: ~1s
+#
+# 如果需要更高准确率且有显存空间:
+#   model_size: "medium"  # ~2-3GB 显存
+#   beam_size: 3          # 提高准确率到 ~88%
+#
+# 如果显存极度受限 (< 2GB):
+#   model_size: "base"    # ~1GB 显存
+#   audio_max_len: 15.0   # 进一步降低缓冲
+
+translation:
+  provider: "nllb"
+  config:
+    model_name: "facebook/nllb-200-distilled-600M"
+    device: "auto"
+    batch_size: 4
+
+tts:
+  provider: "piper"
+  config:
+    model_path: "voices/zh_CN-huayan-medium.onnx"
+    use_cuda: true
+    speaker_id: 0

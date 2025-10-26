@@ -23,13 +23,14 @@ loguru>=0.7.2
 faster-whisper>=0.10.0
 # Alternative: openai-whisper>=20231117
 
-# VAD (Voice Activity Detection)
-# webrtcvad>=2.0.10
-# torch>=2.1.0  # Required for Silero VAD
+# VAD (Voice Activity Detection) - Required for SimulStreaming with VAD enabled
+# Note: Silero VAD is loaded automatically from torch.hub when vad_enabled=true
+# torch>=2.5.0 is already listed below for NLLB translation
 
 # Translation Provider: NLLB
 transformers>=4.35.0
-torch>=2.5.0
+torch>=2.5.0,<2.6.0  # Version constraint for torchaudio compatibility
+torchaudio>=2.5.0,<2.6.0  # Required for Silero VAD (automatic sentence segmentation)
 sentencepiece>=0.1.99
 
 # TTS Provider: Piper

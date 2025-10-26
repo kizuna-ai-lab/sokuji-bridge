@@ -1,0 +1,115 @@
+# SimulStreaming with VAD Automatic Sentence Segmentation
+#
+# This configuration enables automatic sentence segmentation using Silero VAD.
+# When VAD detects silence (default 500ms), the current sentence is automatically
+# completed and marked as final, making it ideal for:
+# - Real-time conversation transcription
+# - Automatic subtitle generation
+# - Live meeting transcription
+# - Interactive voice applications
+#
+# VAD Benefits:
+# - Automatic sentence boundaries without manual control
+# - Natural speech segmentation based on pauses
+# - Better context management for translation
+# - Improved real-time user experience
+
+stt:
+  provider: "simulstreaming"
+  config:
+    # Model Configuration
+    model_size: "large-v3"
+    model_path: "./large-v3.pt"
+    device: "auto"
+    compute_type: "float16"
+
+    # AlignAtt Configuration - Balanced for VAD
+    frame_threshold: 40                  # Balanced latency (~0.8s)
+    rewind_threshold: 999
+    audio_max_len: 30.0
+    audio_min_len: 0.3
+    min_chunk_size: 0.3
+
+    # Beam Search - Higher accuracy for better sentence quality
+    beam_size: 5
+
+    # Context Management
+    max_context_tokens: 224
+    init_prompt: ""
+    static_init_prompt: ""
+
+    # VAD Configuration - ENABLED for automatic segmentation
+    vad_enabled: true                    # 🎙️ Enable automatic sentence segmentation
+
+    # Silero VAD Parameters (optimized for natural speech)
+    vad_threshold: 0.5                   # Speech detection sensitivity
+                                         # 0.3-0.4: More sensitive, detects quiet speech
+                                         # 0.5: Balanced (recommended)
+                                         # 0.6-0.7: Less sensitive, filters background noise
+
+    vad_min_silence_ms: 500              # Silence duration for sentence boundary
+                                         # 300ms: Fast segmentation, short sentences
+                                         # 500ms: Balanced (recommended for conversation)
+                                         # 700ms: Longer sentences, fewer splits
+                                         # 1000ms: Very conservative, long sentences
+
+    vad_speech_pad_ms: 100               # Padding around speech segments
+                                         # Ensures we don't cut off speech start/end
+
+    vad_min_buffered_length: 1.0         # Minimum audio buffer (1 second)
+                                         # Helps VAD detect speech boundaries accurately
+
+    vac_chunk_size: 0.04                 # VAD processing chunk size (40ms)
+                                         # Matches Silero VAD's optimal window
+
+    # Language Configuration
+    language: "auto"
+    task: "transcribe"
+
+# VAD Tuning Guide for Different Scenarios:
+#
+# 📞 Phone Call / Interview (Clear audio):
+#   vad_threshold: 0.5
+#   vad_min_silence_ms: 400
+#   # Natural pauses in conversation
+#
+# 🎤 Presentation / Lecture (Single speaker):
+#   vad_threshold: 0.4
+#   vad_min_silence_ms: 700
+#   # Longer sentences, fewer splits
+#
+# 👥 Meeting / Discussion (Multiple speakers):
+#   vad_threshold: 0.5
+#   vad_min_silence_ms: 500
+#   # Balanced for turn-taking
+#
+# 🏭 Noisy Environment:
+#   vad_threshold: 0.6
+#   vad_min_silence_ms: 600
+#   # Higher threshold filters noise
+#
+# 📺 Subtitles / Live Captions:
+#   vad_threshold: 0.5
+#   vad_min_silence_ms: 500
+#   # Natural subtitle breaks
+#
+# 🤖 Voice Assistant / Commands:
+#   vad_threshold: 0.5
+#   vad_min_silence_ms: 300
+#   # Fast response after user stops speaking
+
+translation:
+  provider: "nllb"
+  config:
+    model_name: "facebook/nllb-200-distilled-600M"
+    device: "auto"
+    batch_size: 4
+
+tts:
+  provider: "piper"
+  config:
+    model_path: "voices/zh_CN-huayan-medium.onnx"
+    use_cuda: true
+    speaker_id: 0
+    length_scale: 1.0
+    noise_scale: 0.667

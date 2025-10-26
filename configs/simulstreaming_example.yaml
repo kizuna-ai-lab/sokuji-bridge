@@ -1,0 +1,106 @@
+# SimulStreaming STT Provider Configuration Example
+#
+# This configuration enables low-latency streaming transcription using
+# SimulStreaming's AlignAtt policy with attention-guided token emission.
+#
+# Expected Performance:
+# - Latency: <2 seconds (vs 2-3s for faster-whisper)
+# - Accuracy: ~92% with beam search (vs ~85% greedy)
+# - First word latency: ~0.8s (vs 2s)
+
+stt:
+  provider: "simulstreaming"
+  config:
+    # Model Configuration
+    model_size: "large-v3"              # Options: large-v2, large-v3
+    model_path: "./large-v3.pt"         # Auto-downloads if not present
+    device: "auto"                       # Options: auto, cuda, cpu
+    compute_type: "float16"              # Options: float16, float32, int8
+
+    # AlignAtt Low-Latency Configuration (<2s target)
+    frame_threshold: 30                  # 30 frames * 0.02s = 0.6s advance emission
+                                         # Lower = faster but less accurate
+                                         # 25-40: ultra-low latency (<2s)
+                                         # 40-80: balanced (2-4s)
+                                         # 80-120: high accuracy (4-6s)
+
+    rewind_threshold: 999                # Disable rewind detection (production stable)
+
+    # Audio Buffer Configuration
+    audio_max_len: 30.0                  # Max 30s buffer (Whisper constraint)
+    audio_min_len: 0.3                   # Min 300ms before processing starts
+    min_chunk_size: 0.3                  # Receive 300ms chunks from audio stream
+
+    # Beam Search Configuration (Higher Accuracy)
+    beam_size: 5                         # Options: 1 (greedy), 3, 5, 7
+                                         # Higher = more accurate but slower
+
+    # Context Management (Cross-Window Memory)
+    max_context_tokens: 224              # Tokens to preserve across 30s windows
+    init_prompt: ""                      # Optional: Add domain terminology
+                                         # Example: "Medical terms: myocardial infarction thrombosis"
+    static_init_prompt: ""               # Optional: Static context that never scrolls
+                                         # Example: "Meeting participants: Dr. Zhang, Nurse Li, Director Wang"
+
+    # VAD Configuration (Automatic Sentence Segmentation)
+    vad_enabled: false                   # Enable VAD for automatic sentence boundaries
+                                         # When enabled, uses Silero VAD to detect silence
+                                         # and automatically segment sentences
+    vad_threshold: 0.5                   # Speech detection threshold (0.0-1.0)
+                                         # Higher = more strict speech detection
+    vad_min_silence_ms: 500              # Silence duration to trigger sentence end
+                                         # Lower = faster segmentation, more splits
+                                         # Higher = fewer splits, longer sentences
+    vad_speech_pad_ms: 100               # Padding added around detected speech
+    vad_min_buffered_length: 1.0         # Minimum buffer length in seconds
+    vac_chunk_size: 0.04                 # VAD processing chunk size (40ms)
+
+    # CIF Word Boundary Detection (Optional)
+    cif_ckpt_path: null                  # Path to CIF model checkpoint
+                                         # Leave null to use default truncation
+    never_fire: false                    # false: smart truncation, true: keep all words
+
+    # Language Configuration
+    language: "auto"                     # Options: auto, zh, en, ja, ko, etc.
+    task: "transcribe"                   # Options: transcribe, translate
+
+# Performance Tuning Guide:
+#
+# Ultra-Low Latency (<1.5s):
+#   frame_threshold: 25
+#   audio_min_len: 0.2
+#   min_chunk_size: 0.2
+#   beam_size: 1 (greedy)
+#
+# Balanced (1.5-2.5s):
+#   frame_threshold: 40
+#   audio_min_len: 0.3
+#   min_chunk_size: 0.3
+#   beam_size: 3
+#
+# High Accuracy (2.5-4s):
+#   frame_threshold: 60
+#   audio_min_len: 0.5
+#   min_chunk_size: 0.5
+#   beam_size: 7
+#
+# GPU Memory Optimization:
+#   model_size: "large-v2"  # Use v2 instead of v3 (~20% less memory)
+#   beam_size: 3            # Reduce beam size
+#   compute_type: "int8"    # Quantize to int8 (~50% memory reduction)
+
+translation:
+  provider: "nllb"
+  config:
+    model_name: "facebook/nllb-200-distilled-600M"
+    device: "auto"
+    batch_size: 4
+
+tts:
+  provider: "piper"
+  config:
+    model_path: "voices/zh_CN-huayan-medium.onnx"
+    use_cuda: true
+    speaker_id: 0
+    length_scale: 1.0
+    noise_scale: 0.667

@@ -239,26 +239,35 @@ service TTSService {
 
 ## 📖 Documentation
 
+**[📚 Full Documentation Index](./docs/README.md)**
+
 ### Getting Started
 - [Installation Guide](./docs/installation.md) - Complete installation instructions
 - [Quick Start (Microservices)](./docs/quickstart.md) - Get running with Docker in 5 minutes
 - [Quick Start (Monolithic)](./docs/quickstart-monolithic.md) - Legacy single-process setup
 
-### Architecture & API
-- [Architecture Documentation](./docs/architecture.md) - Microservices architecture details
-- [Gateway API Reference](./docs/gateway-api.md) - Gateway REST/WebSocket API quick reference
-- [Complete API Reference](./docs/api.md) - Full REST/WebSocket/gRPC API documentation
-- [Provider Guide](./docs/providers.md) - STT, Translation, and TTS provider configuration
+### Core Documentation
+- [Architecture Overview](./docs/architecture.md) - System design and components
+- [Architecture (Microservices)](./docs/architecture-microservices.md) - Distributed deployment
+- [API Reference](./docs/api.md) - Complete REST/WebSocket/gRPC API
+- [Provider Guide](./docs/providers.md) - STT, Translation, and TTS configuration
+
+### Feature Guides
+- **[SimulStreaming + VAD](./docs/features/simulstreaming-vad.md)** ⭐ - Automatic sentence segmentation
+  - Low-latency (<2s) streaming transcription
+  - VAD-based automatic sentence boundaries
+  - Complete setup and tuning guide
+- [SimulStreaming Setup](./docs/features/simulstreaming-setup.md) - Installation and configuration
+
+### User Guides
+- [Model Selection Guide](./docs/guides/model-selection.md) - Choose the right models
+- [Microphone Real-Time](./docs/guides/microphone-realtime.md) - Live audio processing
+- [Debug Mode](./docs/guides/debug-mode.md) - Debugging tools and techniques
 
 ### Advanced Topics
-- [Performance Tuning](./docs/performance.md) - Optimization strategies and benchmarks
-- [Development Guide](./docs/development.md) - Project status and contribution guidelines
-- [Audio I/O System](./docs/audio_io.md) - Audio input/output implementation details
-
-### Troubleshooting
-- [Microservices Guide](./docs/MICROSERVICES.md) - Detailed microservices documentation
-- [VAD Configuration](./docs/VAD_CONFIGURATION.md) - Voice Activity Detection setup
-- [Debug Mode](./docs/DEBUG_MODE.md) - Debugging tools and techniques
+- [Performance Tuning](./docs/performance.md) - Optimization strategies
+- [Development Guide](./docs/development.md) - Contributing guidelines
+- [Audio I/O System](./docs/audio_io.md) - Audio handling details
 
 ## 🔧 Development
 
